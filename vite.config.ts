@@ -6,7 +6,9 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' (not autoUpdate) so a new build never swaps itself in mid-set;
+      // src/update.tsx surfaces a banner and reloads when the user taps it.
+      registerType: 'prompt',
       includeAssets: ['icon-192.png', 'icon-512.png'],
       manifest: {
         name: 'Workout Tracker',

@@ -3,6 +3,7 @@ import { AppData } from './types'
 import { loadData, saveData, StoreCtx } from './store'
 import { NavCtx, View } from './nav'
 import { TimerBar, TimerCtx, useTimerState } from './timer'
+import UpdatePrompt from './update'
 import Home from './views/Home'
 import SessionView from './views/SessionView'
 import WorkoutEditor from './views/WorkoutEditor'
@@ -63,6 +64,7 @@ export default function App() {
       <NavCtx.Provider value={{ view, go: setView }}>
         <TimerCtx.Provider value={timerApi}>
           <div className="app">
+            <UpdatePrompt />
             <TimerBar />
             <main className="main">{content}</main>
             <nav className="bottomnav">
