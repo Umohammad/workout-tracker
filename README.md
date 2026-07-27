@@ -101,7 +101,7 @@ npm run dev        # local dev server
 npm run build      # production build to dist/
 ```
 
-To run your own copy: **fork this repo**, then deploy the fork to any static host. On Vercel it's zero-config:
+To run your own copy: **fork this repo**, then deploy the fork to any static host. On Vercel it's zero-config — import the fork at [vercel.com/new](https://vercel.com/new) and every push to `main` deploys automatically. Or deploy from the command line:
 
 ```bash
 npm i -g vercel
