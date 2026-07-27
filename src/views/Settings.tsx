@@ -142,9 +142,10 @@ export default function SettingsView() {
       <h2 className="sectionhead">Install on your phone</h2>
       <div className="card">
         <p className="sub">
-          Open this site in Chrome on Android → tap the ⋮ menu → <strong>Add to Home screen</strong> →{' '}
-          <strong>Install</strong>. It becomes a full-screen app with its own icon, works offline, and picks up every
-          update automatically — no APKs, ever.
+          <strong>Android:</strong> Chrome → ⋮ menu → <strong>Add to Home screen</strong> → Install.<br />
+          <strong>iPhone:</strong> Safari → Share → <strong>Add to Home Screen</strong>.<br />
+          It becomes a full-screen app with its own icon and works offline. When a new version ships you'll see an
+          “update available” banner at the top — tap it to load the latest.
         </p>
       </div>
     </div>
