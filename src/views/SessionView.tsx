@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store'
 import { useNav } from '../nav'
 import { TimerPresets, useTimer } from '../timer'
-import { calcPlates, plateColor, plateHeight } from '../plates'
+import { calcPlates, nextWeight, plateColor, plateHeight, weightStepFor } from '../plates'
 import { entryRatio, formatDate, lastLogFor, makeEntry, ratioColor, repsSummary } from '../sessions'
 import { EXERCISE_TYPE_LABELS, PlateInv, Session, SessionEntry, goalLabel, pinnedFirst } from '../types'
 
@@ -214,13 +214,9 @@ function ExerciseTile({ session, entry, index }: { session: Session; entry: Sess
       ),
     }))
 
+  const step = weightStepFor(ex?.type, s.weightStep)
   const bumpWeight = (dir: 1 | -1) => {
-    updEntry(en => {
-      const min = isBarType ? barW : 0
-      let w = Math.round((en.weight + dir * s.weightStep) * 100) / 100
-      if (w < min) w = min
-      return { ...en, weight: w }
-    })
+    updEntry(en => ({ ...en, weight: nextWeight(en.weight, dir, step, isBarType ? barW : 0) }))
   }
 
   const tap = (i: number) => {
@@ -293,15 +289,15 @@ function ExerciseTile({ session, entry, index }: { session: Session; entry: Sess
       )}
 
       <div className="weightrow">
-        <button className="stepbtn" onClick={() => bumpWeight(-1)} aria-label="Decrease weight">−</button>
+        <button className="stepbtn" onClick={() => bumpWeight(-1)} aria-label={`Decrease weight by ${step} ${s.unit}`}>−</button>
         <div className="weightval">
           <span className="weightnum">{entry.weight}</span>
           <span className="weightunit">
             {s.unit}
-            {ex?.type === 'calisthenics' ? ' added' : ''}
+            {ex?.type === 'calisthenics' ? ' added' : ''} · ±{step}
           </span>
         </div>
-        <button className="stepbtn" onClick={() => bumpWeight(1)} aria-label="Increase weight">＋</button>
+        <button className="stepbtn" onClick={() => bumpWeight(1)} aria-label={`Increase weight by ${step} ${s.unit}`}>＋</button>
       </div>
 
       {isBarType && <PlateCalc total={entry.weight} bar={barW} plates={s.plates} unit={s.unit} />}

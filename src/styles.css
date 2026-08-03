@@ -169,6 +169,23 @@ textarea {
   background: rgba(74, 222, 128, 0.14);
   transition: width 0.25s linear;
 }
+/* Rest is up and the set is overdue — the bar counts up and turns loud. */
+.timerbar.overdue {
+  background: #eab308;
+  border-bottom-color: #ca8a04;
+}
+.timerbar.overdue.late {
+  background: #f97316;
+  border-bottom-color: #ea580c;
+}
+.timerbar.overdue .timerbar-time {
+  color: #10131a;
+}
+.timerbar.overdue .timerbar-btns button {
+  background: rgba(0, 0, 0, 0.16);
+  border-color: rgba(0, 0, 0, 0.28);
+  color: #10131a;
+}
 .timerbar-row {
   position: relative;
   display: flex;

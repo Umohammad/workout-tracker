@@ -1,4 +1,20 @@
-import { PlateInv } from './types'
+import { ExerciseType, PlateInv } from './types'
+
+// Barbells and EZ bars load symmetrically, so the smallest real jump is a whole
+// pair of plates — they move in full steps (5 lb by default). Dumbbells, cables
+// and hung weight move one increment at a time, so they can do half steps.
+export function weightStepFor(type: ExerciseType | undefined, step: number): number {
+  return type === 'barbell' || type === 'ezbar' ? step : step / 2
+}
+
+// Next weight up/down, snapped to the step grid. Bar exercises are gridded from
+// the empty bar (45 → 50 → 55), everything else from zero.
+export function nextWeight(current: number, dir: 1 | -1, step: number, min: number): number {
+  const n = (current - min) / step
+  const steps = dir > 0 ? Math.floor(n + 1e-6) + 1 : Math.ceil(n - 1e-6) - 1
+  const w = Math.round((min + steps * step) * 100) / 100
+  return Math.max(min, w)
+}
 
 export interface PlateResult {
   perSide: number[] // plate weights for ONE side, heaviest first

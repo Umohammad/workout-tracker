@@ -81,6 +81,10 @@ export default function SettingsView() {
         <div className="numrow">
           <NumField label={`Weight step (${s.unit})`} value={s.weightStep} onChange={v => upd({ weightStep: v })} min={0.5} step={2.5} />
         </div>
+        <p className="sub">
+          Barbell and EZ bar move in full steps ({s.weightStep} {s.unit}) since plates load in pairs. Dumbbells,
+          cables and added weight move in half steps ({s.weightStep / 2} {s.unit}).
+        </p>
         <label className="fieldlabel">Unit</label>
         <div className="choicegrid two">
           <button className={'choice' + (s.unit === 'lb' ? ' active' : '')} onClick={() => upd({ unit: 'lb' })}>lb</button>

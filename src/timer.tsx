@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 
 export interface TimerState {
   end: number // epoch ms when timer finishes
@@ -18,17 +18,27 @@ export const useTimer = () => useContext(TimerCtx)
 
 const TKEY = 'workout-timer-v1'
 
+// Once rest is up the timer keeps running and counts UP, so you can see how
+// long the next set is overdue. Past this much overdue we drop it on reload —
+// a timer left running yesterday isn't useful information today.
+const OVERDUE_KEEP_MS = 60 * 60 * 1000
+// Overdue past this many seconds escalates the bar from yellow to orange.
+export const OVERDUE_LATE_SEC = 90
+
 // Timer stores an absolute end timestamp so it survives page reloads and
 // keeps correct time even if the tab is throttled in the background.
 export function useTimerState(): TimerApi {
   const [timer, setTimer] = useState<TimerState | null>(() => {
     try {
       const t = JSON.parse(localStorage.getItem(TKEY) || 'null') as TimerState | null
-      if (t && t.end > Date.now()) return t
+      if (t && Date.now() - t.end < OVERDUE_KEEP_MS) return t
     } catch {}
     return null
   })
   const [now, setNow] = useState(Date.now())
+  // Alert once per timer — and never re-alert for a timer that already expired
+  // before this page load (e.g. reopening the app mid-overdue).
+  const alerted = useRef<number | null>(timer && Date.now() >= timer.end ? timer.end : null)
 
   useEffect(() => {
     const iv = setInterval(() => setNow(Date.now()), 250)
@@ -36,10 +46,9 @@ export function useTimerState(): TimerApi {
   }, [])
 
   useEffect(() => {
-    if (timer && now >= timer.end) {
+    if (timer && now >= timer.end && alerted.current !== timer.end) {
+      alerted.current = timer.end
       timerDone()
-      persist(null)
-      setTimer(null)
     }
   }, [now, timer])
 
@@ -125,16 +134,21 @@ export function timerDone() {
 export function TimerBar() {
   const { timer, now, start, reset, stop } = useTimer()
   if (!timer) return null
-  const remainMs = Math.max(0, timer.end - now)
-  const remain = Math.ceil(remainMs / 1000)
-  const pct = Math.min(100, (remainMs / (timer.total * 1000)) * 100)
-  const mm = Math.floor(remain / 60)
-  const ss = String(remain % 60).padStart(2, '0')
+  const diffMs = now - timer.end
+  const overdue = diffMs >= 0
+  // Counting down rounds up (3:00 → 2:59), counting up rounds down (+0:00 → +0:01)
+  const secs = overdue ? Math.floor(diffMs / 1000) : Math.ceil(-diffMs / 1000)
+  const pct = overdue ? 0 : Math.min(100, (-diffMs / (timer.total * 1000)) * 100)
+  const mm = Math.floor(secs / 60)
+  const ss = String(secs % 60).padStart(2, '0')
+  const cls =
+    'timerbar' + (overdue ? (secs >= OVERDUE_LATE_SEC ? ' overdue late' : ' overdue') : '')
   return (
-    <div className="timerbar">
+    <div className={cls}>
       <div className="timerbar-progress" style={{ width: pct + '%' }} />
       <div className="timerbar-row">
         <span className="timerbar-time">
+          {overdue ? '+' : ''}
           {mm}:{ss}
         </span>
         <div className="timerbar-btns">
