@@ -5,8 +5,9 @@ A personal strength-training PWA. Local-first: **all data lives in your browser'
 - Saved Workouts (templates) + freeform sessions (add exercises as you go)
 - Rep circles: tap = log target reps, tap again = −1, long-press = +1, `＋` adds an extra set
 - Plate calculator based on the plates you actually own
-- Rest timer with beep/vibration/notification, survives reloads
-- Progress charts: top weight, estimated 1RM (Epley), volume, PR markers, muscle-group split
+- Rest timer with beep/vibration/notification on **every** expiry, survives reloads
+- Progress → **Volume**: total weight moved / sets / reps per week or month, stacked by muscle group, with trend vs the previous period
+- Progress → **By exercise**: top weight, estimated 1RM (Epley), volume, PR markers
 - History: month-grouped past sessions, editable in place
 - JSON export/import for backup and migration
 

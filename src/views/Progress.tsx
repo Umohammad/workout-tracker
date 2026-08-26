@@ -150,29 +150,10 @@ export default function Progress({ initialExerciseId }: { initialExerciseId?: st
   const best = points.length ? Math.max(...points.map(p => p.value)) : 0
   const last = points.length ? points[points.length - 1].value : 0
 
-  // ---- muscle split, last 4 weeks (sets logged per muscle group) ----
-  const cutoff = Date.now() - 28 * 24 * 3600 * 1000
-  const setsByMuscle = new Map<string, number>()
-  for (const s of data.sessions) {
-    if (!s.finished || s.startedAt < cutoff) continue
-    for (const e of s.entries) {
-      const m = data.exercises.find(x => x.id === e.exerciseId)?.muscleGroup
-      if (!m) continue
-      const done = e.reps.filter(r => r !== null).length
-      if (done > 0) setsByMuscle.set(m, (setsByMuscle.get(m) ?? 0) + done)
-    }
-  }
-  const maxSets = Math.max(1, ...setsByMuscle.values())
-  const split = MUSCLE_GROUPS.filter(m => setsByMuscle.has(m))
-
   const pinnedEx = data.exercises.filter(e => e.pinned)
 
   return (
     <div className="page">
-      <header className="pagehead">
-        <h1>Progress</h1>
-      </header>
-
       <div className="card formcard">
         <label className="fieldlabel">Exercise</label>
         <select
@@ -270,25 +251,6 @@ export default function Progress({ initialExerciseId }: { initialExerciseId?: st
         </>
       )}
 
-      {split.length > 0 && (
-        <>
-          <h2 className="sectionhead">Sets per muscle · last 4 weeks</h2>
-          <div className="card splitcard">
-            {split.map(m => {
-              const v = setsByMuscle.get(m)!
-              return (
-                <div key={m} className="splitrow">
-                  <span className="splitname">{m}</span>
-                  <div className="splitbar-track">
-                    <div className="splitbar" style={{ width: `${(v / maxSets) * 100}%` }} />
-                  </div>
-                  <span className="splitval">{v}</span>
-                </div>
-              )
-            })}
-          </div>
-        </>
-      )}
     </div>
   )
 }

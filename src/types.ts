@@ -13,6 +13,19 @@ export const MUSCLE_GROUPS = [
 ] as const
 export type MuscleGroup = (typeof MUSCLE_GROUPS)[number]
 
+// One colour per group so a muscle reads the same in every chart and legend.
+export const MUSCLE_COLORS: Record<MuscleGroup, string> = {
+  Chest: '#ef4444',
+  Back: '#3b82f6',
+  Shoulders: '#f59e0b',
+  Biceps: '#a855f7',
+  Triceps: '#ec4899',
+  Legs: '#4ade80',
+  Glutes: '#14b8a6',
+  Core: '#eab308',
+  'Full Body': '#94a3b8',
+}
+
 export interface SetsRepsGoal {
   kind: 'setsreps'
   sets: number

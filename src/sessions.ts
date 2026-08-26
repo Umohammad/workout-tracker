@@ -103,3 +103,30 @@ export function formatDate(dateStr: string): string {
     return dateStr
   }
 }
+
+// Per-entry totals used by the volume reports. A set only counts once at least
+// one rep is logged against it. Bodyweight work (weight 0) contributes sets and
+// reps but no tonnage — adding reps into a pound total would be meaningless.
+export interface EntryStats {
+  sets: number
+  reps: number
+  tonnage: number
+}
+
+export function entryStats(e: SessionEntry): EntryStats {
+  let sets = 0
+  let reps = 0
+  for (const r of e.reps) {
+    if (r === null || r <= 0) continue
+    sets++
+    reps += r
+  }
+  return { sets, reps, tonnage: e.weight > 0 ? e.weight * reps : 0 }
+}
+
+// Sessions are bucketed by the day they were logged for, not the exact clock
+// time they were started, so a late-night workout lands on the right day.
+export function sessionTime(s: Session): number {
+  const t = Date.parse(s.date + 'T12:00:00')
+  return Number.isNaN(t) ? s.startedAt : t
+}

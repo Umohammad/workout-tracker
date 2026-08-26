@@ -10,7 +10,7 @@ import WorkoutEditor from './views/WorkoutEditor'
 import ExerciseEditor from './views/ExerciseEditor'
 import ExercisesView from './views/Exercises'
 import History from './views/History'
-import Progress from './views/Progress'
+import Reports from './views/Reports'
 import SettingsView from './views/Settings'
 
 export default function App() {
@@ -46,7 +46,7 @@ export default function App() {
       content = <History />
       break
     case 'progress':
-      content = <Progress initialExerciseId={view.exerciseId} />
+      content = <Reports initialExerciseId={view.exerciseId} />
       break
     case 'settings':
       content = <SettingsView />
