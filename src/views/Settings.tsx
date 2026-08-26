@@ -117,7 +117,7 @@ export default function SettingsView() {
         ) : (
           <button className="bigbtn" onClick={requestNotif}>Enable notifications</button>
         )}
-        <button className="linkbtn" onClick={() => timerDone()}>Test sound & buzz</button>
+        <button className="linkbtn" onClick={() => timerDone(Date.now())}>Test sound & buzz</button>
       </div>
 
       <h2 className="sectionhead">Data</h2>

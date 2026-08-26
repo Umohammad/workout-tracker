@@ -45,10 +45,27 @@ export function useTimerState(): TimerApi {
     return () => clearInterval(iv)
   }, [])
 
+  // A backgrounded tab gets its interval throttled — frozen outright on iOS —
+  // so the tick that should have fired the alert may never run. Re-check the
+  // clock the instant we're foregrounded again.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') return
+      setNow(Date.now())
+      // If a timer lapsed while we were away, the alert fires on this tick —
+      // leave its notification alone. Otherwise anything in the tray is stale
+      // from an earlier set, so clear it rather than making the user do it.
+      const pending = timer && Date.now() >= timer.end && alerted.current !== timer.end
+      if (!pending) void clearRestNotifications()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [timer])
+
   useEffect(() => {
     if (timer && now >= timer.end && alerted.current !== timer.end) {
       alerted.current = timer.end
-      timerDone()
+      timerDone(timer.end)
     }
   }, [now, timer])
 
@@ -58,7 +75,11 @@ export function useTimerState(): TimerApi {
   }
 
   const start = (sec: number) => {
+    // Both of these have to ride on the tap that started the timer: iOS only
+    // grants audio and the permission prompt from inside a user gesture.
+    primeAudio()
     void ensureNotifyPermission()
+    void clearRestNotifications()
     const t = { end: Date.now() + sec * 1000, total: sec }
     persist(t)
     setTimer(t)
@@ -67,6 +88,7 @@ export function useTimerState(): TimerApi {
     if (timer) start(timer.total)
   }
   const stop = () => {
+    void clearRestNotifications()
     persist(null)
     setTimer(null)
   }
@@ -82,10 +104,26 @@ export async function ensureNotifyPermission() {
   } catch {}
 }
 
-function beep() {
+// ---------- audio ----------
+
+let audioCtx: AudioContext | null = null
+
+// One long-lived context, opened on a tap. A context built fresh at beep time
+// comes up suspended on iOS (no gesture in scope) and never makes a sound.
+export function primeAudio() {
   try {
     const Ctx = window.AudioContext || (window as any).webkitAudioContext
-    const ctx = new Ctx()
+    if (!Ctx) return
+    audioCtx ||= new Ctx()
+    if (audioCtx.state === 'suspended') void audioCtx.resume()
+  } catch {}
+}
+
+function beep() {
+  try {
+    primeAudio()
+    const ctx = audioCtx
+    if (!ctx) return
     const t0 = ctx.currentTime
     for (let i = 0; i < 3; i++) {
       const o = ctx.createOscillator()
@@ -103,33 +141,66 @@ function beep() {
   } catch {}
 }
 
-async function showNotification() {
-  if (!('Notification' in window) || Notification.permission !== 'granted') return
-  const opts: NotificationOptions & { vibrate?: number[] } = {
-    body: 'Rest is over — time for your next set!',
-    icon: '/icon-192.png',
-    tag: 'rest-timer',
-    vibrate: [300, 150, 300, 150, 500],
-  }
+// ---------- notifications ----------
+
+const NOTIF_TAG = 'rest-timer'
+
+async function swReg(): Promise<ServiceWorkerRegistration | null> {
   try {
-    const reg = await navigator.serviceWorker?.getRegistration()
-    if (reg) {
-      await reg.showNotification('⏱️ Rest over!', opts)
-      return
+    return (await navigator.serviceWorker?.getRegistration()) ?? null
+  } catch {
+    return null
+  }
+}
+
+// Drop any rest alerts still sitting in the notification tray.
+export async function clearRestNotifications() {
+  const reg = await swReg()
+  if (!reg?.getNotifications) return
+  try {
+    for (const n of await reg.getNotifications()) {
+      if (n.tag?.startsWith(NOTIF_TAG)) n.close()
     }
   } catch {}
+}
+
+async function showNotification(end: number) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return
+  // This is why only the first alert of a workout used to land: an undismissed
+  // notification with the same tag gets *replaced* silently — no sound, no
+  // vibration — so every later set went unannounced unless the tray was
+  // cleared by hand. Close the old one first, then post under a tag unique to
+  // this timer with renotify set, so the platform treats it as a new alert.
+  await clearRestNotifications()
+  const opts: NotificationOptions & { vibrate?: number[]; renotify?: boolean } = {
+    body: 'Rest is over — time for your next set!',
+    icon: '/icon-192.png',
+    tag: `${NOTIF_TAG}-${end}`,
+    renotify: true,
+    silent: false,
+    vibrate: [300, 150, 300, 150, 500],
+  }
+  const reg = await swReg()
+  if (reg) {
+    try {
+      await reg.showNotification('⏱️ Rest over!', opts)
+      return
+    } catch {}
+  }
   try {
     new Notification('⏱️ Rest over!', opts)
   } catch {}
 }
 
-export function timerDone() {
+export function timerDone(end: number) {
   try {
     navigator.vibrate?.([300, 150, 300, 150, 500])
   } catch {}
   beep()
-  void showNotification()
+  void showNotification(end)
 }
+
+// ---------- UI ----------
 
 export function TimerBar() {
   const { timer, now, start, reset, stop } = useTimer()
