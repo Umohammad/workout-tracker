@@ -1,7 +1,18 @@
 import { useState } from 'react'
 import { useStore } from '../store'
 import { View, useNav } from '../nav'
-import { EXERCISE_TYPE_LABELS, Exercise, ExerciseType, Goal, MUSCLE_GROUPS, MuscleGroup, uid } from '../types'
+import {
+  EXERCISE_TYPE_LABELS,
+  Exercise,
+  ExerciseType,
+  Goal,
+  MUSCLE_GROUPS,
+  MuscleGroup,
+  PER_SIDE_DEFAULT,
+  isPerSide,
+  supportsPerSide,
+  uid,
+} from '../types'
 import { NumField } from '../components'
 import { makeEntry } from '../sessions'
 
@@ -19,16 +30,28 @@ export default function ExerciseEditor({
   const { data, update } = useStore()
   const { go } = useNav()
   const existing = exerciseId ? data.exercises.find(e => e.id === exerciseId) : undefined
+  const unit = data.settings.unit
 
   const [name, setName] = useState(existing?.name ?? '')
   const [type, setType] = useState<ExerciseType>(existing?.type ?? 'barbell')
   const [muscle, setMuscle] = useState<MuscleGroup>(existing?.muscleGroup ?? 'Chest')
+  // New exercises start as 'barbell', which is never per-side; picking a type
+  // below fills in that type's default.
+  const [perSide, setPerSide] = useState(isPerSide(existing))
   const [goalKind, setGoalKind] = useState<'setsreps' | 'interval'>(existing?.goal.kind ?? 'setsreps')
   const [sets, setSets] = useState(existing?.goal.kind === 'setsreps' ? existing.goal.sets : 3)
   const [reps, setReps] = useState(existing?.goal.kind === 'setsreps' ? existing.goal.reps : 8)
   const [activeSec, setActiveSec] = useState(existing?.goal.kind === 'interval' ? existing.goal.activeSec : 30)
   const [restSec, setRestSec] = useState(existing?.goal.kind === 'interval' ? existing.goal.restSec : 30)
   const [intervals, setIntervals] = useState(existing?.goal.kind === 'interval' ? existing.goal.intervals : 4)
+
+  // Switching type re-answers the per-side question with that type's default —
+  // "Dumbbell" should mean two dumbbells without anyone having to think about it.
+  const pickType = (t: ExerciseType) => {
+    if (t === type) return
+    setType(t)
+    setPerSide(PER_SIDE_DEFAULT[t])
+  }
 
   const save = () => {
     if (!name.trim()) {
@@ -40,6 +63,8 @@ export default function ExerciseEditor({
         ? { kind: 'setsreps', sets: Math.max(1, sets), reps: Math.max(1, reps) }
         : { kind: 'interval', activeSec: Math.max(5, activeSec), restSec: Math.max(0, restSec), intervals: Math.max(1, intervals) }
     const ex: Exercise = { id: existing?.id ?? uid(), name: name.trim(), type, muscleGroup: muscle, goal }
+    if (existing?.pinned) ex.pinned = true
+    if (supportsPerSide(type)) ex.perSide = perSide
     update(d => {
       const exercises = existing ? d.exercises.map(e => (e.id === ex.id ? ex : e)) : [...d.exercises, ex]
       let workouts = d.workouts
@@ -85,7 +110,7 @@ export default function ExerciseEditor({
         <label className="fieldlabel">Type</label>
         <div className="choicegrid">
           {(Object.keys(EXERCISE_TYPE_LABELS) as ExerciseType[]).map(t => (
-            <button key={t} className={'choice' + (type === t ? ' active' : '')} onClick={() => setType(t)}>
+            <button key={t} className={'choice' + (type === t ? ' active' : '')} onClick={() => pickType(t)}>
               {EXERCISE_TYPE_LABELS[t]}
             </button>
           ))}
@@ -99,6 +124,29 @@ export default function ExerciseEditor({
             </button>
           ))}
         </div>
+
+        {supportsPerSide(type) && (
+          <>
+            <label className="fieldlabel">Weight you log is</label>
+            <div className="choicegrid two">
+              <button className={'choice' + (perSide ? ' active' : '')} onClick={() => setPerSide(true)}>
+                Per side
+              </button>
+              <button className={'choice' + (!perSide ? ' active' : '')} onClick={() => setPerSide(false)}>
+                Total
+              </button>
+            </div>
+            <p className="sub">
+              {perSide
+                ? type === 'dumbbell'
+                  ? `Volume counts double — a 30 ${unit} dumbbell in each hand moves 60 ${unit} every rep.`
+                  : `Volume counts double — a 30 ${unit} set you repeat on the other arm moves 60 ${unit} every rep.`
+                : type === 'dumbbell'
+                  ? 'Volume counts the number as logged. Use this for one dumbbell held in both hands, like a goblet squat.'
+                  : 'Volume counts the number as logged. Use this for a stack you pull with both arms at once.'}
+            </p>
+          </>
+        )}
 
         <label className="fieldlabel">Goal</label>
         <div className="choicegrid two">

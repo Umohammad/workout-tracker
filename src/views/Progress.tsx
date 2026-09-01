@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../store'
 import { entryRatio, formatDate, ratioColor, repsSummary } from '../sessions'
-import { MUSCLE_GROUPS, SessionEntry } from '../types'
+import { MUSCLE_GROUPS, SessionEntry, sidesFor } from '../types'
 
 type Metric = 'weight' | '1rm' | 'volume'
 
@@ -15,7 +15,8 @@ interface Point {
   value: number // value under the current metric
 }
 
-// Epley estimate off the best single set
+// Epley estimate off the best single set. Deliberately per side: the 1RM of a
+// single-arm press is what one arm can do, which is the number you program off.
 function est1RM(e: SessionEntry): number {
   let best = 0
   for (const r of e.reps) {
@@ -26,10 +27,11 @@ function est1RM(e: SessionEntry): number {
   return Math.round(best * 10) / 10
 }
 
-// Total work: weight × reps summed; for bodyweight work it's just total reps.
-function volumeOf(e: SessionEntry): number {
+// Total work: weight × reps summed, doubled for per-side work (a 30 lb dumbbell
+// in each hand moves 60 lb a rep). For bodyweight work it's just total reps.
+function volumeOf(e: SessionEntry, sides: 1 | 2): number {
   const totalReps = e.reps.reduce<number>((a, b) => a + (b ?? 0), 0)
-  return e.weight > 0 ? e.weight * totalReps : totalReps
+  return e.weight > 0 ? e.weight * totalReps * sides : totalReps
 }
 
 export default function Progress({ initialExerciseId }: { initialExerciseId?: string }) {
@@ -51,6 +53,7 @@ export default function Progress({ initialExerciseId }: { initialExerciseId?: st
   const [sel, setSel] = useState<number | null>(null)
 
   const ex = data.exercises.find(e => e.id === exId)
+  const sides = sidesFor(ex)
 
   const raw = useMemo(() => (exId ? entriesFor(exId) : []), [exId, data.sessions])
   const isWeighted = raw.some(({ e }) => e.weight > 0)
@@ -63,7 +66,7 @@ export default function Progress({ initialExerciseId }: { initialExerciseId?: st
     reps: e.reps,
     targetSets: e.targetSets,
     targetReps: e.targetReps,
-    value: effMetric === 'weight' ? e.weight : effMetric === '1rm' ? est1RM(e) : volumeOf(e),
+    value: effMetric === 'weight' ? e.weight : effMetric === '1rm' ? est1RM(e) : volumeOf(e, sides),
   }))
 
   const selIdx = sel !== null && sel < points.length ? sel : points.length - 1
@@ -243,7 +246,8 @@ export default function Progress({ initialExerciseId }: { initialExerciseId?: st
                 </span>
               </div>
               <div className="sub">
-                {selPt.weight} {unit} · target {selPt.targetSets}×{selPt.targetReps} · sets: {repsSummary(selPt.reps)}
+                {selPt.weight} {unit}{sides === 2 ? ' per side' : ''} · target {selPt.targetSets}×{selPt.targetReps} · sets:{' '}
+                {repsSummary(selPt.reps)}
               </div>
               <div className="sub dim">Tap any point on the graph for details.</div>
             </div>

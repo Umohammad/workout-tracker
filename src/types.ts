@@ -48,6 +48,38 @@ export interface Exercise {
   muscleGroup: MuscleGroup
   goal: Goal
   pinned?: boolean
+  // True when the logged weight is one limb's load rather than the total: a
+  // 30 lb dumbbell in each hand, or a single-arm cable set you repeat on the
+  // other side. Either way the body moves twice the number you typed, so
+  // volume counts it double. Undefined falls back to the type's default, which
+  // keeps history logged before this existed counting correctly.
+  perSide?: boolean
+}
+
+// Dumbbell work is two-handed unless you say otherwise; cable and machine work
+// is two-armed unless you say otherwise.
+export const PER_SIDE_DEFAULT: Record<ExerciseType, boolean> = {
+  barbell: false,
+  ezbar: false,
+  dumbbell: true,
+  cable: false,
+  calisthenics: false,
+}
+
+// Only the types where the distinction is real get the choice. A barbell's
+// weight is always the total, and calisthenics logs added weight.
+export function supportsPerSide(t: ExerciseType): boolean {
+  return t === 'dumbbell' || t === 'cable'
+}
+
+export function isPerSide(ex: Pick<Exercise, 'type' | 'perSide'> | undefined): boolean {
+  if (!ex) return false
+  return ex.perSide ?? PER_SIDE_DEFAULT[ex.type]
+}
+
+// How many times over the logged load actually gets moved: 2 for per-side work.
+export function sidesFor(ex: Pick<Exercise, 'type' | 'perSide'> | undefined): 1 | 2 {
+  return isPerSide(ex) ? 2 : 1
 }
 
 export interface Workout {

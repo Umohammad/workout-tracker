@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../store'
 import { useNav } from '../nav'
-import { EXERCISE_TYPE_LABELS, Exercise, MUSCLE_GROUPS, goalLabel } from '../types'
+import { EXERCISE_TYPE_LABELS, Exercise, MUSCLE_GROUPS, goalLabel, isPerSide } from '../types'
 
 export default function ExercisesView() {
   const { data, update } = useStore()
@@ -33,7 +33,8 @@ export default function ExercisesView() {
       >
         <strong>{e.name}</strong>
         <div className="sub">
-          {EXERCISE_TYPE_LABELS[e.type]} · {goalLabel(e.goal)}
+          {EXERCISE_TYPE_LABELS[e.type]}
+          {isPerSide(e) ? ' · per side' : ''} · {goalLabel(e.goal)}
         </div>
       </div>
       <button

@@ -1,4 +1,4 @@
-import { AppData, Session, SessionEntry, Workout, todayStr, uid } from './types'
+import { AppData, Session, SessionEntry, Workout, sidesFor, todayStr, uid } from './types'
 
 export interface LastLog {
   weight: number
@@ -113,7 +113,11 @@ export interface EntryStats {
   tonnage: number
 }
 
-export function entryStats(e: SessionEntry): EntryStats {
+// `sides` is 2 for per-side work (see sidesFor): 10 reps with a 30 lb dumbbell
+// in each hand moves 600 lb, not 300. Only tonnage doubles — sets and reps stay
+// as logged, because "3 × 10 each arm" is three sets of ten in every program
+// ever written, not six sets of twenty.
+export function entryStats(e: SessionEntry, sides: 1 | 2): EntryStats {
   let sets = 0
   let reps = 0
   for (const r of e.reps) {
@@ -121,7 +125,14 @@ export function entryStats(e: SessionEntry): EntryStats {
     sets++
     reps += r
   }
-  return { sets, reps, tonnage: e.weight > 0 ? e.weight * reps : 0 }
+  return { sets, reps, tonnage: e.weight > 0 ? e.weight * reps * sides : 0 }
+}
+
+// Sides are read from the exercise library rather than snapshotted onto the
+// entry, so correcting an exercise fixes the volume of every session that used
+// it — including the ones logged before it was marked per-side.
+export function sidesForEntry(data: AppData, e: SessionEntry): 1 | 2 {
+  return sidesFor(data.exercises.find(x => x.id === e.exerciseId))
 }
 
 // Sessions are bucketed by the day they were logged for, not the exact clock

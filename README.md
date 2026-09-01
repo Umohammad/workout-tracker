@@ -4,6 +4,7 @@ A personal strength-training PWA. Local-first: **all data lives in your browser'
 
 - Saved Workouts (templates) + freeform sessions (add exercises as you go)
 - Rep circles: tap = log target reps, tap again = −1, long-press = +1, `＋` adds an extra set
+- Per-side loading: dumbbells count double toward volume by default, and cable/machine exercises get a **Per side / Total** switch — 10 reps of a 30 lb dumbbell in each hand is 600 lb moved, not 300
 - Plate calculator based on the plates you actually own
 - Rest timer with beep/vibration/notification on **every** expiry, survives reloads
 - Progress → **Volume**: total weight moved / sets / reps per week or month, stacked by muscle group, with trend vs the previous period
@@ -36,6 +37,10 @@ The app imports a single JSON file via **Settings → ⬆ Import backup**. Impor
       "goal": { "kind": "setsreps", "sets": 5, "reps": 5 },
       // or an interval goal:
       // "goal": { "kind": "interval", "activeSec": 45, "restSec": 30, "intervals": 3 },
+      "perSide": false,             // optional; true = the logged weight is one limb's load,
+                                    // so volume counts it twice. Only meaningful for
+                                    // "dumbbell" and "cable". Omitted → defaults to true for
+                                    // "dumbbell", false for every other type.
       "pinned": false               // optional
     }
   ],
@@ -89,6 +94,7 @@ The app imports a single JSON file via **Settings → ⬆ Import backup**. Impor
 4. Progress charts read `weight` and `reps` per session, ordered by `startedAt` — so give historical sessions accurate dates and monotonically ordered `startedAt` values (midnight of the date is fine: `new Date("2026-07-20").getTime()`).
 5. Weights are in whatever `settings.unit` says; the app does not convert.
 6. A set that "hit the goal" is `reps[i] === targetReps`; partial sets are smaller numbers; skipped sets are `null`.
+7. For single-arm work, `weight` is the load on **one** side and `reps` are the reps **per** side — set `perSide: true` and the app doubles the tonnage for you. Don't pre-double either number yourself.
 
 Sanity-check a generated file by importing it and looking at the Progress and History tabs.
 

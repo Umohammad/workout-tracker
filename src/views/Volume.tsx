@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../store'
 import { entryStats, sessionTime } from '../sessions'
-import { MUSCLE_COLORS, MUSCLE_GROUPS, MuscleGroup } from '../types'
+import { MUSCLE_COLORS, MUSCLE_GROUPS, MuscleGroup, sidesFor } from '../types'
 
 type Metric = 'tonnage' | 'sets' | 'reps'
 type RangeKey = '4w' | '12w' | '6m' | '1y'
@@ -123,6 +123,7 @@ export default function Volume() {
       })
     }
     const muscleOf = new Map(data.exercises.map(e => [e.id, e.muscleGroup]))
+    const sidesOf = new Map(data.exercises.map(e => [e.id, sidesFor(e)]))
     for (const s of data.sessions) {
       if (!s.finished) continue
       const t = sessionTime(s)
@@ -130,7 +131,7 @@ export default function Volume() {
       if (!b) continue
       let logged = false
       for (const e of s.entries) {
-        const st = entryStats(e)
+        const st = entryStats(e, sidesOf.get(e.exerciseId) ?? 1)
         if (st.sets === 0) continue
         logged = true
         const m: MuscleGroup = muscleOf.get(e.exerciseId) ?? 'Full Body'

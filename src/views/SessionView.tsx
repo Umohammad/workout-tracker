@@ -4,7 +4,7 @@ import { useNav } from '../nav'
 import { TimerPresets, useTimer } from '../timer'
 import { calcPlates, nextWeight, plateColor, plateHeight, weightStepFor } from '../plates'
 import { entryRatio, formatDate, lastLogFor, makeEntry, ratioColor, repsSummary } from '../sessions'
-import { EXERCISE_TYPE_LABELS, PlateInv, Session, SessionEntry, goalLabel, pinnedFirst } from '../types'
+import { EXERCISE_TYPE_LABELS, PlateInv, Session, SessionEntry, goalLabel, pinnedFirst, sidesFor } from '../types'
 
 // Keep the screen awake mid-workout (chalky hands shouldn't have to unlock a phone)
 function useWakeLock() {
@@ -205,6 +205,7 @@ function ExerciseTile({ session, entry, index }: { session: Session; entry: Sess
   const last = lastLogFor(data, entry.exerciseId, session.id)
   const interval = entry.goalKind === 'interval'
   const spec = entry.intervalSpec
+  const perSide = sidesFor(ex) === 2
 
   const updEntry = (fn: (e: SessionEntry) => SessionEntry) =>
     update(d => ({
@@ -283,7 +284,7 @@ function ExerciseTile({ session, entry, index }: { session: Session; entry: Sess
 
       {last && (
         <div className="lastlog">
-          Last: {last.weight > 0 ? `${last.weight} ${s.unit} — ` : ''}
+          Last: {last.weight > 0 ? `${last.weight} ${s.unit}${perSide ? '/side' : ''} — ` : ''}
           {repsSummary(last.reps)} <span className="sub">({formatDate(last.date)})</span>
         </div>
       )}
@@ -294,7 +295,8 @@ function ExerciseTile({ session, entry, index }: { session: Session; entry: Sess
           <span className="weightnum">{entry.weight}</span>
           <span className="weightunit">
             {s.unit}
-            {ex?.type === 'calisthenics' ? ' added' : ''} · ±{step}
+            {ex?.type === 'calisthenics' ? ' added' : ''}
+            {perSide ? ' per side' : ''} · ±{step}
           </span>
         </div>
         <button className="stepbtn" onClick={() => bumpWeight(1)} aria-label={`Increase weight by ${step} ${s.unit}`}>＋</button>

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useStore } from '../store'
 import { useNav } from '../nav'
 import { entryRatio, formatDate, ratioColor, repsSummary } from '../sessions'
-import { Session } from '../types'
+import { Session, sidesFor } from '../types'
 
 // Overall completion of a session: total reps done vs total reps targeted.
 function sessionRatio(s: Session): number {
@@ -89,7 +89,9 @@ export default function History() {
                           </span>
                         </div>
                         <div className="sub">
-                          {e.weight > 0 ? `${e.weight} ${data.settings.unit} · ` : ''}
+                          {e.weight > 0
+                            ? `${e.weight} ${data.settings.unit}${sidesFor(ex) === 2 ? '/side' : ''} · `
+                            : ''}
                           {e.goalKind === 'interval' && e.intervalSpec
                             ? `${e.reps.filter(x => x !== null).length}/${e.intervalSpec.intervals} rounds · ${e.intervalSpec.activeSec}s on / ${e.intervalSpec.restSec}s off`
                             : `target ${e.targetSets}×${e.targetReps} · sets: ${repsSummary(e.reps)}`}
