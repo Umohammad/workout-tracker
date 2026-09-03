@@ -5,6 +5,7 @@ A personal strength-training PWA. Local-first: **all data lives in your browser'
 - Saved Workouts (templates) + freeform sessions (add exercises as you go)
 - Rep circles: tap = log target reps, tap again = −1, long-press = +1, `＋` adds an extra set
 - Per-side loading: dumbbells count double toward volume by default, and cable/machine exercises get a **Per side / Total** switch — 10 reps of a 30 lb dumbbell in each hand is 600 lb moved, not 300
+- Landmine exercises, with a **Single arm / Dual arm** toggle; single-arm work counts double toward volume the same way
 - Plate calculator based on the plates you actually own
 - Rest timer with beep/vibration/notification on **every** expiry, survives reloads
 - Progress → **Volume**: total weight moved / sets / reps per week or month, stacked by muscle group, with trend vs the previous period
@@ -31,7 +32,8 @@ The app imports a single JSON file via **Settings → ⬆ Import backup**. Impor
     {
       "id": "sq1",                  // any unique string; referenced by workouts & sessions
       "name": "Squat",
-      "type": "barbell",            // "barbell" | "ezbar" | "dumbbell" | "cable" | "calisthenics"
+      "type": "barbell",            // "barbell" | "ezbar" | "dumbbell" | "cable" |
+                                    // "landmine" | "calisthenics"
       "muscleGroup": "Legs",        // "Chest" | "Back" | "Shoulders" | "Biceps" | "Triceps" |
                                     // "Legs" | "Glutes" | "Core" | "Full Body"
       "goal": { "kind": "setsreps", "sets": 5, "reps": 5 },
@@ -39,8 +41,9 @@ The app imports a single JSON file via **Settings → ⬆ Import backup**. Impor
       // "goal": { "kind": "interval", "activeSec": 45, "restSec": 30, "intervals": 3 },
       "perSide": false,             // optional; true = the logged weight is one limb's load,
                                     // so volume counts it twice. Only meaningful for
-                                    // "dumbbell" and "cable". Omitted → defaults to true for
-                                    // "dumbbell", false for every other type.
+                                    // "dumbbell", "cable" and "landmine" (where the editor
+                                    // calls it Single arm / Dual arm). Omitted → defaults to
+                                    // true for "dumbbell", false for every other type.
       "pinned": false               // optional
     }
   ],

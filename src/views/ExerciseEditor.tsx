@@ -10,6 +10,7 @@ import {
   MuscleGroup,
   PER_SIDE_DEFAULT,
   isPerSide,
+  perSideChoice,
   supportsPerSide,
   uid,
 } from '../types'
@@ -127,13 +128,13 @@ export default function ExerciseEditor({
 
         {supportsPerSide(type) && (
           <>
-            <label className="fieldlabel">Weight you log is</label>
+            <label className="fieldlabel">{perSideChoice(type).label}</label>
             <div className="choicegrid two">
               <button className={'choice' + (perSide ? ' active' : '')} onClick={() => setPerSide(true)}>
-                Per side
+                {perSideChoice(type).on}
               </button>
               <button className={'choice' + (!perSide ? ' active' : '')} onClick={() => setPerSide(false)}>
-                Total
+                {perSideChoice(type).off}
               </button>
             </div>
             <p className="sub">
@@ -143,7 +144,9 @@ export default function ExerciseEditor({
                   : `Volume counts double — a 30 ${unit} set you repeat on the other arm moves 60 ${unit} every rep.`
                 : type === 'dumbbell'
                   ? 'Volume counts the number as logged. Use this for one dumbbell held in both hands, like a goblet squat.'
-                  : 'Volume counts the number as logged. Use this for a stack you pull with both arms at once.'}
+                  : type === 'landmine'
+                    ? 'Volume counts the number as logged. Use this for both hands on the sleeve, like a landmine squat or rotation.'
+                    : 'Volume counts the number as logged. Use this for a stack you pull with both arms at once.'}
             </p>
           </>
         )}

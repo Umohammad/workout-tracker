@@ -4,6 +4,10 @@ function ex(name: string, type: Exercise['type'], muscleGroup: Exercise['muscleG
   return { id: uid(), name, type, muscleGroup, goal: { kind: 'setsreps', sets, reps } }
 }
 
+function landmine(name: string, muscleGroup: Exercise['muscleGroup'], sets: number, reps: number, perSide: boolean): Exercise {
+  return { ...ex(name, 'landmine', muscleGroup, sets, reps), perSide }
+}
+
 export function defaultSettings(): Settings {
   return {
     barWeight: 45,
@@ -34,12 +38,19 @@ export function seedData(): AppData {
   const pushdown = ex('Tricep Pushdown', 'cable', 'Triceps', 3, 12)
   const latpull = ex('Lat Pulldown', 'cable', 'Back', 3, 10)
   const dbPress = ex('DB Shoulder Press', 'dumbbell', 'Shoulders', 3, 8)
+  const lmPress = landmine('Landmine Press', 'Shoulders', 3, 10, true)
+  const lmRow = landmine('Landmine Row', 'Back', 3, 10, true)
+  const lmSquatPress = landmine('Landmine Squat to Press', 'Full Body', 3, 8, false)
+  const lmTwist = landmine('Landmine Rotation', 'Core', 3, 10, false)
   const plank: Exercise = {
     id: uid(), name: 'Plank', type: 'calisthenics', muscleGroup: 'Core',
     goal: { kind: 'interval', activeSec: 45, restSec: 30, intervals: 3 },
   }
 
-  const exercises = [squat, bench, deadlift, ohp, row, pullups, dips, curls, pushdown, latpull, dbPress, plank]
+  const exercises = [
+    squat, bench, deadlift, ohp, row, pullups, dips, curls, pushdown, latpull, dbPress, plank,
+    lmPress, lmRow, lmSquatPress, lmTwist,
+  ]
 
   const workouts: Workout[] = [
     { id: uid(), name: 'Push Day', exerciseIds: [bench.id, ohp.id, dips.id, pushdown.id] },

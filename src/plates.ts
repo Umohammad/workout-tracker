@@ -1,8 +1,9 @@
 import { ExerciseType, PlateInv } from './types'
 
 // Barbells and EZ bars load symmetrically, so the smallest real jump is a whole
-// pair of plates — they move in full steps (5 lb by default). Dumbbells, cables
-// and hung weight move one increment at a time, so they can do half steps.
+// pair of plates — they move in full steps (5 lb by default). Dumbbells, cables,
+// landmines (plates go on one sleeve) and hung weight move one increment at a
+// time, so they can do half steps.
 export function weightStepFor(type: ExerciseType | undefined, step: number): number {
   return type === 'barbell' || type === 'ezbar' ? step : step / 2
 }

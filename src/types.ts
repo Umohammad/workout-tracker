@@ -1,10 +1,11 @@
-export type ExerciseType = 'barbell' | 'ezbar' | 'dumbbell' | 'cable' | 'calisthenics'
+export type ExerciseType = 'barbell' | 'ezbar' | 'dumbbell' | 'cable' | 'landmine' | 'calisthenics'
 
 export const EXERCISE_TYPE_LABELS: Record<ExerciseType, string> = {
   barbell: 'Barbell',
   ezbar: 'EZ Bar',
   dumbbell: 'Dumbbell',
   cable: 'Cables',
+  landmine: 'Landmine',
   calisthenics: 'Calisthenics',
 }
 
@@ -63,13 +64,38 @@ export const PER_SIDE_DEFAULT: Record<ExerciseType, boolean> = {
   ezbar: false,
   dumbbell: true,
   cable: false,
+  // A landmine can be driven with both hands on the sleeve or one arm at a
+  // time, and neither is the obvious majority — so default to the number as
+  // logged and let the Arms toggle say otherwise.
+  landmine: false,
   calisthenics: false,
 }
 
 // Only the types where the distinction is real get the choice. A barbell's
 // weight is always the total, and calisthenics logs added weight.
 export function supportsPerSide(t: ExerciseType): boolean {
-  return t === 'dumbbell' || t === 'cable'
+  return t === 'dumbbell' || t === 'cable' || t === 'landmine'
+}
+
+// The same per-side question, asked in the language of the implement: a
+// landmine is single- or dual-arm, a dumbbell or cable stack is logged per
+// side or in total.
+export interface PerSideChoice {
+  label: string
+  on: string
+  off: string
+}
+
+export function perSideChoice(t: ExerciseType): PerSideChoice {
+  return t === 'landmine'
+    ? { label: 'Arms', on: 'Single arm', off: 'Dual arm' }
+    : { label: 'Weight you log is', on: 'Per side', off: 'Total' }
+}
+
+// How a per-side exercise reads in a list.
+export function perSideNote(ex: Pick<Exercise, 'type' | 'perSide'> | undefined): string {
+  if (!isPerSide(ex)) return ''
+  return ex?.type === 'landmine' ? ' · single arm' : ' · per side'
 }
 
 export function isPerSide(ex: Pick<Exercise, 'type' | 'perSide'> | undefined): boolean {
