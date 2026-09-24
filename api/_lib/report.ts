@@ -2,7 +2,7 @@
 // /api/progress. Kept free of runtime imports from src/ so the serverless bundle
 // never depends on the app's extensionless ESM imports — the three small
 // formulas below mirror src/ and test/report.test.ts checks they stay in step.
-import type { AppData, Exercise, ExerciseType, MuscleGroup, Session, SessionEntry } from '../../src/types'
+import type { AppData, Exercise, ExerciseType, MuscleGroup, Session, SessionEntry } from '../../src/types.js'
 
 // Mirrors PER_SIDE_DEFAULT / sidesFor in src/types.ts.
 const PER_SIDE_DEFAULT: Record<ExerciseType, boolean> = {

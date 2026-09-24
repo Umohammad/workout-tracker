@@ -9,7 +9,7 @@ import { createHash, timingSafeEqual } from 'node:crypto'
 import { get, put } from '@vercel/blob'
 import { isAppData } from './_lib/validate.js'
 import { buildReport, DEFAULT_SESSIONS, DEFAULT_WEEKS, MAX_SESSIONS, MAX_WEEKS } from './_lib/report.js'
-import type { AppData } from '../src/types'
+import type { AppData } from '../src/types.js'
 
 const PATHNAME = 'progress/latest.json'
 
