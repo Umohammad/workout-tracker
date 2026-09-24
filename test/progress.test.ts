@@ -20,7 +20,7 @@ vi.mock('@vercel/blob', () => ({
   }),
 }))
 
-const { GET, PUT, OPTIONS } = await import('../api/progress.js')
+const { GET, HEAD, PUT, OPTIONS } = await import('../api/progress.js')
 
 const URL_ = 'https://workouts.test/api/progress'
 const put = (body: unknown, auth?: string) =>
@@ -162,6 +162,14 @@ describe('GET as a page or text', () => {
     expect((await at('/api/progress')).headers.get('content-type')).toContain('application/json')
   })
 
+  it('answers HEAD like GET, without a body', async () => {
+    await put(demoData(), KEY)
+    const res = await HEAD(new Request('https://workouts.test/progress', { method: 'HEAD' }))
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8')
+    expect(await res.text()).toBe('')
+  })
+
   it('explains an empty log in the same format', async () => {
     const res = await at('/progress')
     expect(res.status).toBe(404)
@@ -172,5 +180,5 @@ describe('GET as a page or text', () => {
 it('answers CORS preflight for reads only', () => {
   const res = OPTIONS()
   expect(res.status).toBe(204)
-  expect(res.headers.get('access-control-allow-methods')).toBe('GET, OPTIONS')
+  expect(res.headers.get('access-control-allow-methods')).toBe('GET, HEAD, OPTIONS')
 })
