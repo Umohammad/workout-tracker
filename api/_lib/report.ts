@@ -277,25 +277,28 @@ export function buildReport(data: AppData, opts: ReportOptions) {
 }
 
 function about(unit: string, opts: ReportOptions) {
-  const url = `${opts.baseUrl}/api/progress`
+  const api = `${opts.baseUrl}/api/progress`
+  const page = `${opts.baseUrl}/progress`
   return {
     what:
       "A personal strength-training log, synced automatically from the owner's workout tracker app. " +
-      "Use it to answer questions about their training: consistency, progress on lifts, volume trends, PRs, balance between muscle groups.",
+      'Use it to answer questions about their training: consistency, progress on lifts, volume trends, PRs, balance between muscle groups.',
     howToRead: [
       `All weights are in ${unit}. The app never converts units.`,
-      'Only finished workouts are counted. A workout still being logged appears separately under workoutInProgress.',
-      'reps is one number per set: reps completed. null means that set was skipped. A set hit its goal when reps equals the target reps.',
-      'volume = weight × reps, summed. Where weightMeans says ONE side (dumbbells, single-arm work), volume counts the load twice. Bodyweight work (weight 0) adds sets and reps but no volume.',
-      'estimated1RM uses the Epley formula on the best set (reps capped at 12). For one-side exercises it is the one-side estimate.',
-      'Dates are the local calendar date of the workout. Weeks start on Monday; the latest week in weekly is still in progress.',
-      'lastSyncedAt is when the phone last uploaded. Workouts logged after that are not included yet.',
-      'changePct is null when there is nothing in the earlier period to compare against.',
+      'Only finished workouts are counted. A workout still being logged is listed separately as in progress.',
+      'Reps are one number per set: reps completed. A skipped set is null in JSON and – in text. A set hit its goal when its reps equal the target reps.',
+      'Volume = weight × reps, summed. For exercises where the weight is ONE side (dumbbells, single-arm work), volume counts the load twice. Bodyweight work (weight 0) adds sets and reps but no volume.',
+      'Estimated 1RM uses the Epley formula on the best set (reps capped at 12). For one-side exercises it is the one-side estimate.',
+      'Dates are the local calendar date of the workout. Weeks start on Monday, and the latest week is still in progress.',
+      'The "data as of" / lastSyncedAt time is when the phone last uploaded. Workouts logged after that are not included yet.',
+      'A change of n/a (null in JSON) means there was nothing in the earlier period to compare against.',
     ],
     endpoints: {
-      report: `${url} (this page, the default)`,
-      moreHistory: `${url}?sessions=50&weeks=52 — sessions: how many recent workouts to list in full (default ${DEFAULT_SESSIONS}, max ${MAX_SESSIONS}); weeks: weekly buckets (default ${DEFAULT_WEEKS}, max ${MAX_WEEKS})`,
-      rawExport: `${url}?view=export — the complete raw backup file, identical to the app's JSON export (every workout ever logged, raw IDs, no summaries)`,
+      page: `${page} — this report as a readable web page`,
+      text: `${page}.txt — the same report as plain text (Markdown)`,
+      report: `${api} — the same report as JSON`,
+      moreHistory: `${page}?sessions=50&weeks=52 (also works on ${page}.txt and ${api}) — sessions: how many recent workouts to list in full (default ${DEFAULT_SESSIONS}, max ${MAX_SESSIONS}); weeks: weekly buckets (default ${DEFAULT_WEEKS}, max ${MAX_WEEKS})`,
+      rawExport: `${api}?view=export — the complete raw backup file, identical to the app's JSON export (every workout ever logged, raw IDs, no summaries)`,
     },
   }
 }

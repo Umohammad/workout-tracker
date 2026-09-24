@@ -5,6 +5,8 @@ import { defaultSettings, demoData, seedData } from '../seed'
 import { NumField } from '../components'
 import { ensureNotifyPermission, timerDone } from '../timer'
 import { newSyncKey, progressUrl, pushNow, setSyncKey, useSyncState } from '../sync'
+import { buildReport, DEFAULT_SESSIONS, DEFAULT_WEEKS } from '../../api/_lib/report.js'
+import { renderMarkdown } from '../../api/_lib/markdown.js'
 
 export default function SettingsView() {
   const { data, update } = useStore()
@@ -182,8 +184,25 @@ function AiAccess({ data }: { data: AppData }) {
   const [haveKey, setHaveKey] = useState(false)
   const url = progressUrl()
   const prompt =
-    `My workout log is at ${url} — fetch it, read its "about" section to learn the format, ` +
+    `My workout log is at ${url} — open it, read the "What this is and how to read it" section, ` +
     `then answer: how's my progress?`
+
+  // Same report the link serves, built on the phone, for assistants that
+  // won't open links. Pasting it works everywhere, with or without sync.
+  const copyReport = () => {
+    const report = buildReport(data, {
+      now: new Date(),
+      syncedAt: null,
+      baseUrl: location.origin,
+      weeks: DEFAULT_WEEKS,
+      sessions: DEFAULT_SESSIONS,
+    })
+    void copy(
+      "Here is my workout log. Read the \"What this is and how to read it\" section first, then answer: how's my progress?\n\n" +
+        renderMarkdown(report),
+      'Report'
+    )
+  }
 
   const turnOn = (key: string) => {
     setSyncKey(key)
@@ -200,6 +219,10 @@ function AiAccess({ data }: { data: AppData }) {
           Keeps a copy of your log on this app's server so any AI assistant (ChatGPT, Gemini, Claude) can read it
           from one link and answer “how's my progress?”. <strong>Anyone with the link can read it</strong> — it
           holds your workouts and settings, nothing else. Only this phone can change it.
+        </p>
+        <button className="bigbtn" onClick={copyReport}>📋 Copy report for AI</button>
+        <p className="sub">
+          Works with any assistant, even ones that won't open links: paste it into the chat and ask away. No sync needed.
         </p>
         {!sync.key ? (
           haveKey ? (
@@ -237,7 +260,7 @@ function AiAccess({ data }: { data: AppData }) {
             <label className="fieldlabel">Link for your AI</label>
             <p className="sub"><code>{url}</code></p>
             <button className="bigbtn" onClick={() => void copy(prompt, 'AI prompt')}>
-              📋 Copy prompt for your AI
+              🔗 Copy link prompt for your AI
             </button>
             <button className="linkbtn" onClick={() => void copy(url, 'Link')}>Copy link only</button>
             <button className="linkbtn" onClick={() => void pushNow(data, { force: true })} disabled={sync.busy}>

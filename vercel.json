@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/progress", "destination": "/api/progress?format=html" },
+    { "source": "/progress.txt", "destination": "/api/progress?format=md" }
+  ]
+}

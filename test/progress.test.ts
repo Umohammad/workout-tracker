@@ -140,6 +140,35 @@ describe('GET /api/progress', () => {
   })
 })
 
+describe('GET as a page or text', () => {
+  const at = (path: string) => GET(new Request('https://workouts.test' + path))
+
+  it('serves HTML at /progress and Markdown text at /progress.txt', async () => {
+    await put(demoData(), KEY)
+    const page = await at('/progress')
+    expect(page.status).toBe(200)
+    expect(page.headers.get('content-type')).toBe('text/html; charset=utf-8')
+    expect(await page.text()).toContain('<h2>Weekly totals</h2>')
+    const txt = await at('/progress.txt')
+    expect(txt.headers.get('content-type')).toBe('text/plain; charset=utf-8')
+    expect(await txt.text()).toMatch(/^# Workout progress report/)
+  })
+
+  it('honours the rewrite\'s ?format= and the usual limits', async () => {
+    await put(demoData(), KEY)
+    const md = await (await at('/api/progress?format=md&sessions=2')).text()
+    expect(md.split('## Recent workouts')[1].match(/^### /gm)).toHaveLength(2)
+    expect((await at('/api/progress?format=html')).headers.get('content-type')).toContain('text/html')
+    expect((await at('/api/progress')).headers.get('content-type')).toContain('application/json')
+  })
+
+  it('explains an empty log in the same format', async () => {
+    const res = await at('/progress')
+    expect(res.status).toBe(404)
+    expect(await res.text()).toContain('No workout data has been synced yet')
+  })
+})
+
 it('answers CORS preflight for reads only', () => {
   const res = OPTIONS()
   expect(res.status).toBe(204)

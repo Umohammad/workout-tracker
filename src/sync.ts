@@ -56,8 +56,9 @@ export function useSyncState(): SyncState {
   )
 }
 
+// The readable page; /api/progress serves the same report as JSON.
 export function progressUrl(): string {
-  return location.origin + ENDPOINT
+  return location.origin + '/progress'
 }
 
 // 128 random bits. The server remembers the first key that syncs to it.

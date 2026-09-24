@@ -10,9 +10,9 @@ export default defineConfig({
       // src/update.tsx surfaces a banner and reloads when the user taps it.
       registerType: 'prompt',
       includeAssets: ['icon-192.png', 'icon-512.png'],
-      // /api/progress is served by a Vercel function; opening it in a browser
+      // /api/progress and /progress are served by a Vercel function; opening them in a browser
       // that has the app installed must not get the SPA shell instead.
-      workbox: { navigateFallbackDenylist: [/^\/api\//] },
+      workbox: { navigateFallbackDenylist: [/^\/api\//, /^\/progress/] },
       manifest: {
         name: 'Workout Tracker',
         short_name: 'Workout',

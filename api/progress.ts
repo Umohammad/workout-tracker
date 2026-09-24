@@ -1,5 +1,8 @@
 // GET  /api/progress  — public, read-only progress report for AI agents (no auth by design).
 //      ?view=export    — the raw backup, same as Settings → Export backup.
+// GET  /progress, /progress.txt — the same report as a web page / plain text
+//      (rewritten here by vercel.json). Chat assistants read those far more
+//      readily than a JSON endpoint.
 // PUT  /api/progress  — the app uploads its data here with
 //      `Authorization: Bearer <sync key>`. The first key to sync claims the
 //      link (only its hash is kept); after that only that key can overwrite it.
@@ -11,6 +14,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { get, put } from '@vercel/blob'
 import { isAppData } from './_lib/validate.js'
+import { renderMarkdown, markdownToHtml } from './_lib/markdown.js'
 import { buildReport, DEFAULT_SESSIONS, DEFAULT_WEEKS, MAX_SESSIONS, MAX_WEEKS } from './_lib/report.js'
 import type { AppData } from '../src/types.js'
 
@@ -35,6 +39,29 @@ const HEADERS = {
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body, null, 2), { status, headers: HEADERS })
 
+type Format = 'json' | 'md' | 'html'
+
+// The rewrite passes ?format=, but fall back to the path in case the platform
+// hands the function the original URL.
+function formatOf(url: URL): Format {
+  const f = url.searchParams.get('format')
+  if (f === 'md' || f === 'html' || f === 'json') return f
+  if (url.pathname.endsWith('/progress.txt')) return 'md'
+  if (url.pathname.endsWith('/progress')) return url.pathname.startsWith('/api/') ? 'json' : 'html'
+  return 'json'
+}
+
+function send(format: Format, markdown: string, jsonBody: unknown, status = 200): Response {
+  if (format === 'json') return json(jsonBody, status)
+  if (format === 'md') {
+    return new Response(markdown, { status, headers: { ...HEADERS, 'Content-Type': 'text/plain; charset=utf-8' } })
+  }
+  return new Response(markdownToHtml(markdown), {
+    status,
+    headers: { ...HEADERS, 'Content-Type': 'text/html; charset=utf-8' },
+  })
+}
+
 function clampInt(raw: string | null, def: number, max: number): number {
   const n = raw === null ? NaN : parseInt(raw, 10)
   if (!Number.isFinite(n) || n < 1) return def
@@ -54,34 +81,31 @@ async function readStored(): Promise<Stored | null> {
 
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url)
+  const format = formatOf(url)
   let stored: Stored | null
   try {
     stored = await readStored()
   } catch (err) {
     console.error('blob read failed', err)
-    return json({ error: 'Storage is not reachable. Connect a Vercel Blob store to this project.' }, 503)
+    const error = 'Storage is not reachable. Connect a Vercel Blob store to this project.'
+    return send(format, `# Workout progress report\n\n${error}\n`, { error }, 503)
   }
   if (!stored) {
-    return json(
-      {
-        error: 'No workout data has been synced yet.',
-        fix: 'In the app: Settings → AI access → Turn on sync. Data uploads automatically after that.',
-      },
-      404
-    )
+    const error = 'No workout data has been synced yet.'
+    const fix = 'In the app: Settings → AI access → Turn on sync. Data uploads automatically after that.'
+    return send(format, `# Workout progress report\n\n${error} ${fix}\n`, { error, fix }, 404)
   }
 
   if (url.searchParams.get('view') === 'export') return json(stored.data)
 
-  return json(
-    buildReport(stored.data, {
-      now: new Date(),
-      syncedAt: stored.syncedAt,
-      baseUrl: url.origin,
-      weeks: clampInt(url.searchParams.get('weeks'), DEFAULT_WEEKS, MAX_WEEKS),
-      sessions: clampInt(url.searchParams.get('sessions'), DEFAULT_SESSIONS, MAX_SESSIONS),
-    })
-  )
+  const report = buildReport(stored.data, {
+    now: new Date(),
+    syncedAt: stored.syncedAt,
+    baseUrl: url.origin,
+    weeks: clampInt(url.searchParams.get('weeks'), DEFAULT_WEEKS, MAX_WEEKS),
+    sessions: clampInt(url.searchParams.get('sessions'), DEFAULT_SESSIONS, MAX_SESSIONS),
+  })
+  return send(format, format === 'json' ? '' : renderMarkdown(report), report)
 }
 
 export async function PUT(request: Request): Promise<Response> {

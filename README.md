@@ -12,7 +12,7 @@ A personal strength-training PWA. Local-first: **all data lives in your browser'
 - Progress → **By exercise**: top weight, estimated 1RM (Epley), volume, PR markers
 - History: month-grouped past sessions, editable in place
 - JSON export/import for backup and migration
-- **AI access**: one public, read-only link that ChatGPT, Gemini or Claude can fetch to answer “how's my progress?”
+- **AI access**: copy a progress report to paste into any AI chat, or share one public, read-only link that assistants can open to answer “how's my progress?”
 
 ## Install on your phone
 
@@ -104,18 +104,23 @@ Sanity-check a generated file by importing it and looking at the Progress and Hi
 
 ## AI access: let ChatGPT, Gemini or Claude read your progress
 
-Turn it on in **Settings → AI access**. The app then uploads its data (the same JSON as **Export backup**) whenever it opens and after each burst of logging, and serves it at:
+There are two ways to hand your log to an assistant, both in **Settings → AI access**:
+
+- **📋 Copy report for AI**: copies the whole progress report as text. Paste it into any chat. It works with every assistant and needs no sync or setup.
+- **A link**: turn on sync, and the app uploads its data (the same JSON as **Export backup**) whenever it opens and after each burst of logging. **🔗 Copy link prompt for your AI** then gives you a message pointing at:
 
 ```
-https://<your-deployment>/api/progress
+https://<your-deployment>/progress
 ```
 
-Give that link to any assistant, or tap **Copy prompt for your AI**, which copies something like *“My workout log is at …/api/progress — fetch it, read its "about" section to learn the format, then answer: how's my progress?”*.
+Assistants that browse (ChatGPT, Claude) can open that link themselves. Some won't (the Gemini app declined to open the JSON link). For those, use **Copy report for AI**.
 
 | Request | Returns |
 |---|---|
-| `GET /api/progress` | Agent-ready report: an `about` block explaining the format, overview (session counts, days since last workout), last 28 days vs the 28 before, weekly totals by muscle group, per-exercise bests (top weight, estimated 1RM) and recent logs, and the last 10 workouts in full. |
-| `GET /api/progress?sessions=50&weeks=52` | Same, with more history (max 500 sessions / 104 weeks). |
+| `GET /progress` | The report as a plain web page (no scripts). It starts with how to read the data, then: overview, last 28 days vs the 28 before, weekly totals by muscle group, per-exercise bests (top weight, estimated 1RM) and recent logs, and the last 10 workouts in full. |
+| `GET /progress.txt` | The same report as plain text (Markdown). |
+| `GET /api/progress` | The same report as JSON. |
+| `?sessions=50&weeks=52` | More history on any of the above (max 500 sessions / 104 weeks). |
 | `GET /api/progress?view=export` | The raw backup file, identical to Settings → Export backup. |
 | `PUT /api/progress` | Used by the app. Needs `Authorization: Bearer <sync key>`. |
 
