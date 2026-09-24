@@ -60,6 +60,12 @@ export function progressUrl(): string {
   return location.origin + ENDPOINT
 }
 
+// 128 random bits. The server remembers the first key that syncs to it.
+export function newSyncKey(): string {
+  const b = crypto.getRandomValues(new Uint8Array(16))
+  return Array.from(b, x => x.toString(16).padStart(2, '0')).join('')
+}
+
 export function setSyncKey(key: string) {
   // A new key means the server hasn't necessarily seen this data yet.
   set({ key: key.trim(), lastError: null, lastHash: null })

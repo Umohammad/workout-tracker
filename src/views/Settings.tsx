@@ -4,7 +4,7 @@ import { AppData, Settings, todayStr } from '../types'
 import { defaultSettings, demoData, seedData } from '../seed'
 import { NumField } from '../components'
 import { ensureNotifyPermission, timerDone } from '../timer'
-import { progressUrl, pushNow, setSyncKey, useSyncState } from '../sync'
+import { newSyncKey, progressUrl, pushNow, setSyncKey, useSyncState } from '../sync'
 
 export default function SettingsView() {
   const { data, update } = useStore()
@@ -179,14 +179,16 @@ async function copy(text: string, what: string) {
 function AiAccess({ data }: { data: AppData }) {
   const sync = useSyncState()
   const [draft, setDraft] = useState('')
+  const [haveKey, setHaveKey] = useState(false)
   const url = progressUrl()
   const prompt =
     `My workout log is at ${url} — fetch it, read its "about" section to learn the format, ` +
     `then answer: how's my progress?`
 
-  const save = () => {
-    setSyncKey(draft)
+  const turnOn = (key: string) => {
+    setSyncKey(key)
     setDraft('')
+    setHaveKey(false)
     void pushNow(data, { force: true })
   }
 
@@ -197,22 +199,30 @@ function AiAccess({ data }: { data: AppData }) {
         <p className="sub">
           Keeps a copy of your log on this app's server so any AI assistant (ChatGPT, Gemini, Claude) can read it
           from one link and answer “how's my progress?”. <strong>Anyone with the link can read it</strong> — it
-          holds your workouts and settings, nothing else.
+          holds your workouts and settings, nothing else. Only this phone can change it.
         </p>
         {!sync.key ? (
-          <>
-            <label className="fieldlabel">Sync key</label>
-            <input
-              type="password"
-              autoComplete="off"
-              placeholder="Paste your sync key"
-              value={draft}
-              onChange={e => setDraft(e.target.value)}
-            />
-            <button className="bigbtn" onClick={save} disabled={!draft.trim()}>
-              Turn on sync
-            </button>
-          </>
+          haveKey ? (
+            <>
+              <label className="fieldlabel">Sync key</label>
+              <input
+                type="password"
+                autoComplete="off"
+                placeholder="Paste the key from your old device"
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+              />
+              <button className="bigbtn" onClick={() => turnOn(draft.trim())} disabled={draft.trim().length < 16}>
+                Turn on sync
+              </button>
+              <button className="linkbtn" onClick={() => setHaveKey(false)}>Cancel</button>
+            </>
+          ) : (
+            <>
+              <button className="bigbtn" onClick={() => turnOn(newSyncKey())}>Turn on sync</button>
+              <button className="linkbtn" onClick={() => setHaveKey(true)}>Moving from another device? Use its key</button>
+            </>
+          )
         ) : (
           <>
             <p className="sub">
@@ -233,10 +243,13 @@ function AiAccess({ data }: { data: AppData }) {
             <button className="linkbtn" onClick={() => void pushNow(data, { force: true })} disabled={sync.busy}>
               Sync now
             </button>
+            <button className="linkbtn" onClick={() => void copy(sync.key, 'Sync key')}>
+              Copy sync key (needed to sync from a new phone)
+            </button>
             <button
               className="linkbtn danger"
               onClick={() => {
-                if (window.confirm('Stop syncing from this device? The last uploaded copy stays readable at the link.')) {
+                if (window.confirm('Stop syncing from this device? The last uploaded copy stays readable at the link. Copy your sync key first if you want to turn it back on later.')) {
                   setSyncKey('')
                 }
               }}

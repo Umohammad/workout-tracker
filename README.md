@@ -114,18 +114,16 @@ Give that link to any assistant, or tap **Copy prompt for your AI**, which copie
 
 | Request | Returns |
 |---|---|
-| `GET /api/progress` | Agent-ready report: an `about` block explaining the format, overview (sessions, streaks), last 28 days vs the 28 before, weekly totals by muscle group, per-exercise bests (top weight, estimated 1RM) and recent logs, and the last 10 workouts in full. |
+| `GET /api/progress` | Agent-ready report: an `about` block explaining the format, overview (session counts, days since last workout), last 28 days vs the 28 before, weekly totals by muscle group, per-exercise bests (top weight, estimated 1RM) and recent logs, and the last 10 workouts in full. |
 | `GET /api/progress?sessions=50&weeks=52` | Same, with more history (max 500 sessions / 104 weeks). |
 | `GET /api/progress?view=export` | The raw backup file, identical to Settings → Export backup. |
-| `PUT /api/progress` | Used by the app. Needs `Authorization: Bearer <SYNC_TOKEN>`. |
+| `PUT /api/progress` | Used by the app. Needs `Authorization: Bearer <sync key>`. |
 
-**Reads are public by design**: anyone with the URL can read your workouts and settings. There are no names, emails or other personal details in the data. Responses send `X-Robots-Tag: noindex`, so search engines won't index them. **Writes need the sync key**, so nobody else can overwrite your data.
+**Reads are public by design**: anyone with the URL can read your workouts and settings. There are no names, emails or other personal details in the data. Responses send `X-Robots-Tag: noindex`, so search engines won't index them. **Writes need the sync key.** When you tap **Turn on sync**, the phone generates a random key. The first key that syncs claims the link, and the server keeps only its hash. After that, nobody else can overwrite your data.
 
-**One-time server setup (Vercel):**
+**One-time server setup (Vercel):** go to **Storage → Create → Blob**, choose **Private**, connect it to this project, and redeploy. That's all. It sets `BLOB_READ_WRITE_TOKEN`.
 
-1. **Storage → Create → Blob**, choose **Private**, and connect it to this project. This sets `BLOB_READ_WRITE_TOKEN`.
-2. **Settings → Environment Variables**: add `SYNC_TOKEN` (Production). Use any long random string, e.g. `openssl rand -hex 24`.
-3. Redeploy, then paste the same `SYNC_TOKEN` into **Settings → AI access** on your phone.
+**New phone?** Before switching, tap **Copy sync key** on the old one, then use **Moving from another device? Use its key** on the new one. **Lost the key?** Set a `SYNC_TOKEN` environment variable on Vercel to a 32-character hex string (e.g. `openssl rand -hex 16`), redeploy, and enter that same value as the key on your phone. It takes the link back.
 
 Sync is one-way (phone → server), and the last device to upload wins. Use it from the one device you actually log on.
 

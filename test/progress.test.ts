@@ -33,46 +33,65 @@ const put = (body: unknown, auth?: string) =>
   )
 const get = (qs = '') => GET(new Request(URL_ + qs))
 
+const KEY = 'Bearer 0123456789abcdef0123456789abcdef'
+const OTHER = 'Bearer ffffffffffffffffffffffffffffffff'
+
 beforeEach(() => {
   store.clear()
   failStorage = false
-  vi.stubEnv('SYNC_TOKEN', 'correct-horse')
 })
 afterEach(() => vi.unstubAllEnvs())
 
-describe('PUT /api/progress', () => {
-  it('refuses when the server has no SYNC_TOKEN', async () => {
-    vi.stubEnv('SYNC_TOKEN', '')
-    const res = await put(demoData(), 'Bearer correct-horse')
-    expect(res.status).toBe(503)
-    expect(store.size).toBe(0)
-  })
+const saved = () => JSON.parse(store.get('progress/latest.json')!)
 
-  it('refuses a missing or wrong key', async () => {
+describe('PUT /api/progress', () => {
+  it('refuses a missing or too-short key', async () => {
     expect((await put(demoData())).status).toBe(401)
-    expect((await put(demoData(), 'Bearer wrong')).status).toBe(401)
-    expect((await put(demoData(), 'correct-horse')).status).toBe(401)
+    expect((await put(demoData(), 'Bearer short')).status).toBe(401)
+    expect((await put(demoData(), '0123456789abcdef0123456789abcdef')).status).toBe(401)
     expect(store.size).toBe(0)
   })
 
   it('rejects bodies that are not a backup', async () => {
-    expect((await put('not json', 'Bearer correct-horse')).status).toBe(400)
-    expect((await put({ hello: 1 }, 'Bearer correct-horse')).status).toBe(400)
+    expect((await put('not json', KEY)).status).toBe(400)
+    expect((await put({ hello: 1 }, KEY)).status).toBe(400)
     expect(store.size).toBe(0)
   })
 
-  it('stores a valid backup', async () => {
+  it('lets the first key claim the link, storing only its hash', async () => {
     const data = demoData()
-    const res = await put(data, 'Bearer correct-horse')
+    const res = await put(data, KEY)
     expect(res.status).toBe(200)
-    const j = await res.json()
-    expect(j).toMatchObject({ ok: true, sessions: data.sessions.length })
-    expect(JSON.parse(store.get('progress/latest.json')!).data).toEqual(data)
+    expect(await res.json()).toMatchObject({ ok: true, sessions: data.sessions.length })
+    expect(saved().data).toEqual(data)
+    expect(saved().keyHash).toMatch(/^[0-9a-f]{64}$/)
+    expect(store.get('progress/latest.json')).not.toContain('0123456789abcdef')
+  })
+
+  it('then only accepts that key', async () => {
+    await put(demoData(), KEY)
+    const before = store.get('progress/latest.json')
+    const res = await put({ exercises: [], workouts: [], sessions: [] }, OTHER)
+    expect(res.status).toBe(401)
+    expect((await res.json()).error).toMatch(/different key/)
+    expect(store.get('progress/latest.json')).toBe(before)
+    expect((await put({ exercises: [], workouts: [], sessions: [] }, KEY)).status).toBe(200)
+    expect(saved().data.sessions).toEqual([])
+  })
+
+  it('SYNC_TOKEN on the server takes a lost link back', async () => {
+    await put(demoData(), KEY)
+    vi.stubEnv('SYNC_TOKEN', 'ffffffffffffffffffffffffffffffff')
+    expect((await put(demoData(), OTHER)).status).toBe(200)
+    vi.unstubAllEnvs()
+    // the recovery key now owns it; the old one is locked out
+    expect((await put(demoData(), OTHER)).status).toBe(200)
+    expect((await put(demoData(), KEY)).status).toBe(401)
   })
 
   it('reports storage failures as 503', async () => {
     failStorage = true
-    expect((await put(demoData(), 'Bearer correct-horse')).status).toBe(503)
+    expect((await put(demoData(), KEY)).status).toBe(503)
   })
 })
 
@@ -84,7 +103,7 @@ describe('GET /api/progress', () => {
   })
 
   it('serves the report publicly, uncached and unindexed', async () => {
-    await put(demoData(), 'Bearer correct-horse')
+    await put(demoData(), KEY)
     const res = await get()
     expect(res.status).toBe(200)
     expect(res.headers.get('cache-control')).toBe('no-store')
@@ -98,7 +117,7 @@ describe('GET /api/progress', () => {
   })
 
   it('respects weeks/sessions and clamps silly values', async () => {
-    await put(demoData(), 'Bearer correct-horse')
+    await put(demoData(), KEY)
     const r = await (await get('?weeks=3&sessions=2')).json()
     expect(r.weekly).toHaveLength(3)
     expect(r.recentSessions).toHaveLength(2)
@@ -109,8 +128,10 @@ describe('GET /api/progress', () => {
 
   it('returns the raw backup for view=export', async () => {
     const data = demoData()
-    await put(data, 'Bearer correct-horse')
-    expect(await (await get('?view=export')).json()).toEqual(data)
+    await put(data, KEY)
+    const exported = await (await get('?view=export')).json()
+    expect(exported).toEqual(data)
+    expect(exported).not.toHaveProperty('keyHash')
   })
 
   it('reports storage failures as 503', async () => {
