@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store'
 import { useNav } from '../nav'
 import { TimerPresets, useTimer } from '../timer'
-import { calcPlates, nextWeight, plateColor, plateHeight, weightStepFor } from '../plates'
+import { LoadStyle, calcPlates, loadStyleFor, nextWeight, plateColor, plateHeight, weightStepFor } from '../plates'
 import { entryRatio, formatDate, lastLogFor, makeEntry, ratioColor, repsSummary } from '../sessions'
 import { EXERCISE_TYPE_LABELS, PlateInv, Session, SessionEntry, goalLabel, pinnedFirst, sidesFor } from '../types'
 
@@ -201,6 +201,7 @@ function ExerciseTile({ session, entry, index }: { session: Session; entry: Sess
   const s = data.settings
   const ex = data.exercises.find(e => e.id === entry.exerciseId)
   const isBarType = ex?.type === 'barbell' || ex?.type === 'ezbar'
+  const loadStyle = loadStyleFor(ex?.type)
   const barW = ex?.type === 'ezbar' ? s.ezBarWeight : s.barWeight
   const last = lastLogFor(data, entry.exerciseId, session.id)
   const interval = entry.goalKind === 'interval'
@@ -302,7 +303,9 @@ function ExerciseTile({ session, entry, index }: { session: Session; entry: Sess
         <button className="stepbtn" onClick={() => bumpWeight(1)} aria-label={`Increase weight by ${step} ${s.unit}`}>＋</button>
       </div>
 
-      {isBarType && <PlateCalc total={entry.weight} bar={barW} plates={s.plates} unit={s.unit} />}
+      {loadStyle && (
+        <PlateCalc total={entry.weight} bar={isBarType ? barW : 0} load={loadStyle} plates={s.plates} unit={s.unit} />
+      )}
 
       <div className="circles">
         {entry.reps.map((v, i) => {
@@ -400,14 +403,33 @@ function RepCircle({
   )
 }
 
-function PlateCalc({ total, bar, plates, unit }: { total: number; bar: number; plates: PlateInv[]; unit: string }) {
-  const res = calcPlates(total, bar, plates)
+const LOAD_TEXT: Record<LoadStyle, { label: string; empty: (bar: number, unit: string) => string }> = {
+  bar: { label: 'Per side', empty: (bar, unit) => `empty bar (${bar} ${unit})` },
+  sleeve: { label: 'On the sleeve', empty: () => 'nothing loaded' },
+  pin: { label: 'On the pin', empty: () => 'nothing loaded' },
+}
+
+function PlateCalc({
+  total,
+  bar,
+  load,
+  plates,
+  unit,
+}: {
+  total: number
+  bar: number
+  load: LoadStyle
+  plates: PlateInv[]
+  unit: string
+}) {
+  const res = calcPlates(total, bar, plates, load === 'bar' ? 2 : 1)
+  const text = LOAD_TEXT[load]
   const darkText = (w: number) => (w >= 10 && w < 25) || (w >= 35 && w < 45)
   return (
     <div className="platecalc">
       <div className="platecalc-visual">
         <div className="barstub" />
-        {res.perSide.map((w, i) => (
+        {res.side.map((w, i) => (
           <div
             key={i}
             className="plate"
@@ -416,16 +438,12 @@ function PlateCalc({ total, bar, plates, unit }: { total: number; bar: number; p
             {w}
           </div>
         ))}
-        {res.perSide.length === 0 && (
-          <span className="platecalc-empty">
-            empty bar ({bar} {unit})
-          </span>
-        )}
+        {res.side.length === 0 && <span className="platecalc-empty">{text.empty(bar, unit)}</span>}
       </div>
       <div className="platecalc-text">
-        {res.perSide.length > 0 && (
+        {res.side.length > 0 && (
           <>
-            Per side: <strong>{res.perSide.join(' + ')}</strong>
+            {text.label}: <strong>{res.side.join(' + ')}</strong>
           </>
         )}
         {!res.exact && (

@@ -6,7 +6,7 @@ A personal strength-training PWA. Local-first: **all data lives in your browser'
 - Rep circles: tap = log target reps, tap again = −1, long-press = +1, `＋` adds an extra set
 - Per-side loading: dumbbells count double toward volume by default, and cable/machine exercises get a **Per side / Total** switch — 10 reps of a 30 lb dumbbell in each hand is 600 lb moved, not 300
 - Landmine exercises, with a **Single arm / Dual arm** toggle; single-arm work counts double toward volume the same way
-- Plate calculator based on the plates you actually own
+- Plate calculator based on the plates you actually own: split across both sleeves for barbell and EZ bar, all on one side for landmine (the sleeve) and plate-loaded cables (the loading pin)
 - Rest timer with beep/vibration/notification on **every** expiry, survives reloads
 - Progress → **Volume**: total weight moved / sets / reps per week or month, stacked by muscle group, with trend vs the previous period
 - Progress → **By exercise**: top weight, estimated 1RM (Epley), volume, PR markers
