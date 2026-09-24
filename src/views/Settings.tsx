@@ -4,6 +4,7 @@ import { AppData, Settings, todayStr } from '../types'
 import { defaultSettings, demoData, seedData } from '../seed'
 import { NumField } from '../components'
 import { ensureNotifyPermission, timerDone } from '../timer'
+import { progressUrl, pushNow, setSyncKey, useSyncState } from '../sync'
 
 export default function SettingsView() {
   const { data, update } = useStore()
@@ -120,6 +121,8 @@ export default function SettingsView() {
         <button className="linkbtn" onClick={() => timerDone(Date.now())}>Test sound & buzz</button>
       </div>
 
+      <AiAccess data={data} />
+
       <h2 className="sectionhead">Data</h2>
       <div className="card formcard">
         <p className="sub">
@@ -153,5 +156,96 @@ export default function SettingsView() {
         </p>
       </div>
     </div>
+  )
+}
+
+function ago(t: number): string {
+  const s = Math.round((Date.now() - t) / 1000)
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`
+  if (s < 86400) return `${Math.floor(s / 3600)} h ago`
+  return new Date(t).toLocaleDateString()
+}
+
+async function copy(text: string, what: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    alert(`${what} copied ✓`)
+  } catch {
+    window.prompt(`Copy the ${what.toLowerCase()}:`, text)
+  }
+}
+
+function AiAccess({ data }: { data: AppData }) {
+  const sync = useSyncState()
+  const [draft, setDraft] = useState('')
+  const url = progressUrl()
+  const prompt =
+    `My workout log is at ${url} — fetch it, read its "about" section to learn the format, ` +
+    `then answer: how's my progress?`
+
+  const save = () => {
+    setSyncKey(draft)
+    setDraft('')
+    void pushNow(data, { force: true })
+  }
+
+  return (
+    <>
+      <h2 className="sectionhead">AI access</h2>
+      <div className="card formcard">
+        <p className="sub">
+          Keeps a copy of your log on this app's server so any AI assistant (ChatGPT, Gemini, Claude) can read it
+          from one link and answer “how's my progress?”. <strong>Anyone with the link can read it</strong> — it
+          holds your workouts and settings, nothing else.
+        </p>
+        {!sync.key ? (
+          <>
+            <label className="fieldlabel">Sync key</label>
+            <input
+              type="password"
+              autoComplete="off"
+              placeholder="Paste your sync key"
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+            />
+            <button className="bigbtn" onClick={save} disabled={!draft.trim()}>
+              Turn on sync
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="sub">
+              {sync.busy
+                ? 'Syncing…'
+                : sync.lastError
+                  ? `⚠ ${sync.lastError}`
+                  : sync.lastSyncedAt
+                    ? `✓ Synced ${ago(sync.lastSyncedAt)} — updates automatically as you log.`
+                    : 'Not synced yet.'}
+            </p>
+            <label className="fieldlabel">Link for your AI</label>
+            <p className="sub"><code>{url}</code></p>
+            <button className="bigbtn" onClick={() => void copy(prompt, 'AI prompt')}>
+              📋 Copy prompt for your AI
+            </button>
+            <button className="linkbtn" onClick={() => void copy(url, 'Link')}>Copy link only</button>
+            <button className="linkbtn" onClick={() => void pushNow(data, { force: true })} disabled={sync.busy}>
+              Sync now
+            </button>
+            <button
+              className="linkbtn danger"
+              onClick={() => {
+                if (window.confirm('Stop syncing from this device? The last uploaded copy stays readable at the link.')) {
+                  setSyncKey('')
+                }
+              }}
+            >
+              Turn off sync
+            </button>
+          </>
+        )}
+      </div>
+    </>
   )
 }

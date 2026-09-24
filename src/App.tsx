@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AppData } from './types'
 import { loadData, saveData, StoreCtx } from './store'
 import { NavCtx, View } from './nav'
 import { TimerBar, TimerCtx, useTimerState } from './timer'
 import UpdatePrompt from './update'
+import { installSyncTriggers, pushNow, scheduleSync } from './sync'
 import Home from './views/Home'
 import SessionView from './views/SessionView'
 import WorkoutEditor from './views/WorkoutEditor'
@@ -23,6 +24,18 @@ export default function App() {
     })
   }
   const [view, setView] = useState<View>({ name: 'home' })
+
+  // Cloud copy for AI assistants (no-op until a sync key is set in Settings):
+  // upload on launch, then after each burst of edits.
+  const dataRef = useRef(data)
+  dataRef.current = data
+  const launched = useRef(false)
+  useEffect(() => {
+    if (launched.current) scheduleSync(data)
+    else void pushNow(data)
+    launched.current = true
+  }, [data])
+  useEffect(() => installSyncTriggers(() => dataRef.current), [])
   const timerApi = useTimerState()
 
   let content

@@ -951,3 +951,7 @@ textarea {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
+.sub code {
+  word-break: break-all;
+}

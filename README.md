@@ -1,6 +1,6 @@
 # Workout Tracker
 
-A personal strength-training PWA. Local-first: **all data lives in your browser's localStorage** — there is no server, no account, no shared database. Live at https://workout-tracker-livid-five.vercel.app
+A personal strength-training PWA. Local-first: **all data lives in your browser's localStorage** — no account, no shared database. The only server piece is optional: [AI access](#ai-access-let-chatgpt-gemini-or-claude-read-your-progress) uploads a copy of your log so assistants can read it from a link. Live at https://workout-tracker-livid-five.vercel.app
 
 - Saved Workouts (templates) + freeform sessions (add exercises as you go)
 - Rep circles: tap = log target reps, tap again = −1, long-press = +1, `＋` adds an extra set
@@ -12,6 +12,7 @@ A personal strength-training PWA. Local-first: **all data lives in your browser'
 - Progress → **By exercise**: top weight, estimated 1RM (Epley), volume, PR markers
 - History: month-grouped past sessions, editable in place
 - JSON export/import for backup and migration
+- **AI access**: one public, read-only link that ChatGPT, Gemini or Claude can fetch to answer “how's my progress?”
 
 ## Install on your phone
 
@@ -101,6 +102,33 @@ The app imports a single JSON file via **Settings → ⬆ Import backup**. Impor
 
 Sanity-check a generated file by importing it and looking at the Progress and History tabs.
 
+## AI access: let ChatGPT, Gemini or Claude read your progress
+
+Turn it on in **Settings → AI access**. The app then uploads its data (the same JSON as **Export backup**) whenever it opens and after each burst of logging, and serves it at:
+
+```
+https://<your-deployment>/api/progress
+```
+
+Give that link to any assistant, or tap **Copy prompt for your AI**, which copies something like *“My workout log is at …/api/progress — fetch it, read its "about" section to learn the format, then answer: how's my progress?”*.
+
+| Request | Returns |
+|---|---|
+| `GET /api/progress` | Agent-ready report: an `about` block explaining the format, overview (sessions, streaks), last 28 days vs the 28 before, weekly totals by muscle group, per-exercise bests (top weight, estimated 1RM) and recent logs, and the last 10 workouts in full. |
+| `GET /api/progress?sessions=50&weeks=52` | Same, with more history (max 500 sessions / 104 weeks). |
+| `GET /api/progress?view=export` | The raw backup file, identical to Settings → Export backup. |
+| `PUT /api/progress` | Used by the app. Needs `Authorization: Bearer <SYNC_TOKEN>`. |
+
+**Reads are public by design**: anyone with the URL can read your workouts and settings. There are no names, emails or other personal details in the data. Responses send `X-Robots-Tag: noindex`, so search engines won't index them. **Writes need the sync key**, so nobody else can overwrite your data.
+
+**One-time server setup (Vercel):**
+
+1. **Storage → Create → Blob**, choose **Private**, and connect it to this project. This sets `BLOB_READ_WRITE_TOKEN`.
+2. **Settings → Environment Variables**: add `SYNC_TOKEN` (Production). Use any long random string, e.g. `openssl rand -hex 24`.
+3. Redeploy, then paste the same `SYNC_TOKEN` into **Settings → AI access** on your phone.
+
+Sync is one-way (phone → server), and the last device to upload wins. Use it from the one device you actually log on.
+
 ## Run it yourself / make your own version
 
 Requires Node 18+.
@@ -109,6 +137,8 @@ Requires Node 18+.
 npm install
 npm run dev        # local dev server
 npm run build      # production build to dist/
+npm test           # unit tests (vitest)
+npm run typecheck
 ```
 
 To run your own copy: **fork this repo**, then deploy the fork to any static host. On Vercel it's zero-config — import the fork at [vercel.com/new](https://vercel.com/new) and every push to `main` deploys automatically. Or deploy from the command line:
@@ -122,4 +152,4 @@ Your deployment is fully independent — your data, your URL, your edits. Pull u
 
 ## Stack
 
-React 18 + TypeScript + Vite + [vite-plugin-pwa](https://vite-pwa-org.netlify.app/). No backend, no analytics, no dependencies beyond React.
+React 18 + TypeScript + Vite + [vite-plugin-pwa](https://vite-pwa-org.netlify.app/). No analytics. The one Vercel function (`api/progress.ts`) stores the synced copy in [Vercel Blob](https://vercel.com/docs/vercel-blob).
