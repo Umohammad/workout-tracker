@@ -146,7 +146,7 @@ describe('buildReport', () => {
   it('honours the sessions limit and explains itself', () => {
     const small = buildReport(fixture(), opts(NOW, { sessions: 1 }))
     expect(small.recentSessions).toHaveLength(1)
-    expect(r.about.endpoints.rawExport).toBe('https://example.test/api/progress?view=export — the complete raw backup file, identical to the app\'s JSON export (every workout ever logged, raw IDs, no summaries)')
+    expect(r.about.endpoints.rawExport).toBe(`https://example.test/api/progress?view=export&t=${new Date(NOW).getTime().toString(36)} — the complete raw backup file, identical to the app\'s JSON export (every workout ever logged, raw IDs, no summaries)`)
     expect(r.about.howToRead[0]).toContain('lb')
   })
 

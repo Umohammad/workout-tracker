@@ -110,8 +110,10 @@ There are two ways to hand your log to an assistant, both in **Settings → AI a
 - **A link**: turn on sync, and the app uploads its data (the same JSON as **Export backup**) whenever it opens and after each burst of logging. **🔗 Copy link prompt for your AI** then gives you a message pointing at:
 
 ```
-https://<your-deployment>/progress
+https://<your-deployment>/progress?t=<stamp>
 ```
+
+The `?t=` value changes every time you copy the link and the server ignores it. It is there because AI fetch tools keep their own cache keyed on the exact URL, so handing an agent the same link twice could get it an old copy. The server itself never caches: every response sends `Cache-Control: no-store` (plus `CDN-Cache-Control` / `Vercel-CDN-Cache-Control: no-store`) and reads the blob uncached. Links inside the report carry a fresh `t=` too, and the report tells agents to re-fetch with a new one to check for new workouts.
 
 Assistants that browse (ChatGPT, Claude) can open that link themselves. Some won't (the Gemini app declined to open the JSON link). For those, use **Copy report for AI**.
 

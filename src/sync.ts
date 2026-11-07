@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { AppData } from './types'
+import { freshStamp } from '../api/_lib/report.js'
 
 // Optional push of the whole backup to /api/progress so AI assistants can read
 // it from a link. The sync key lives in its own storage slot, never inside
@@ -59,6 +60,12 @@ export function useSyncState(): SyncState {
 // The readable page; /api/progress serves the same report as JSON.
 export function progressUrl(): string {
   return location.origin + '/progress'
+}
+
+// The link to hand an agent: unique per copy (?t=, ignored by the server) so an
+// AI fetch tool's own URL cache can't serve it an old copy of the log.
+export function freshProgressUrl(now = new Date()): string {
+  return `${progressUrl()}?t=${freshStamp(now)}`
 }
 
 // 128 random bits. The server remembers the first key that syncs to it.

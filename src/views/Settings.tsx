@@ -4,7 +4,7 @@ import { AppData, Settings, todayStr } from '../types'
 import { defaultSettings, demoData, seedData } from '../seed'
 import { NumField } from '../components'
 import { ensureNotifyPermission, timerDone } from '../timer'
-import { newSyncKey, progressUrl, pushNow, setSyncKey, useSyncState } from '../sync'
+import { freshProgressUrl, newSyncKey, progressUrl, pushNow, setSyncKey, useSyncState } from '../sync'
 import { buildReport, DEFAULT_SESSIONS, DEFAULT_WEEKS } from '../../api/_lib/report.js'
 import { renderMarkdown } from '../../api/_lib/markdown.js'
 
@@ -183,9 +183,10 @@ function AiAccess({ data }: { data: AppData }) {
   const [draft, setDraft] = useState('')
   const [haveKey, setHaveKey] = useState(false)
   const url = progressUrl()
-  const prompt =
-    `My workout log is at ${url} — open it, read the "What this is and how to read it" section, ` +
-    `then answer: how's my progress?`
+  // Built at tap time so every copied link is new to the AI's fetch cache.
+  const prompt = () =>
+    `My workout log is at ${freshProgressUrl()} — it is live, so fetch it now rather than using any earlier copy. ` +
+    `Read the "What this is and how to read it" section, then answer: how's my progress?`
 
   // Same report the link serves, built on the phone, for assistants that
   // won't open links. Pasting it works everywhere, with or without sync.
@@ -259,10 +260,10 @@ function AiAccess({ data }: { data: AppData }) {
             </p>
             <label className="fieldlabel">Link for your AI</label>
             <p className="sub"><code>{url}</code></p>
-            <button className="bigbtn" onClick={() => void copy(prompt, 'AI prompt')}>
+            <button className="bigbtn" onClick={() => void copy(prompt(), 'AI prompt')}>
               🔗 Copy link prompt for your AI
             </button>
-            <button className="linkbtn" onClick={() => void copy(url, 'Link')}>Copy link only</button>
+            <button className="linkbtn" onClick={() => void copy(freshProgressUrl(), 'Link')}>Copy link only</button>
             <button className="linkbtn" onClick={() => void pushNow(data, { force: true })} disabled={sync.busy}>
               Sync now
             </button>

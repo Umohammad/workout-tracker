@@ -91,7 +91,7 @@ describe('markdownToHtml', () => {
     expect(html).toMatch(/<table><thead><tr><th>Week of<\/th>/)
     expect(html).toContain('<li>Squat: 215 lb × 5, 3, – (target 3×5)</li>')
     expect(html).toContain('<strong>215 lb</strong>')
-    expect(html).toContain('<a href="https://w.test/api/progress?view=export">')
+    expect(html).toMatch(/<a href="https:\/\/w\.test\/api\/progress\?view=export&(amp;)?t=[0-9a-z]+">/)
     expect(html).not.toMatch(/\*\*|^\| /m)
   })
 })

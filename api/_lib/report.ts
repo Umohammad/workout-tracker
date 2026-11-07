@@ -276,7 +276,13 @@ export function buildReport(data: AppData, opts: ReportOptions) {
   }
 }
 
+// A throwaway ?t= value that makes each link unique. The server ignores it and
+// already sends no-store, but AI fetch tools keep their own cache keyed on the
+// exact URL, so an unchanged link can hand an agent an old copy.
+export const freshStamp = (now: Date) => now.getTime().toString(36)
+
 function about(unit: string, opts: ReportOptions) {
+  const t = freshStamp(opts.now)
   const api = `${opts.baseUrl}/api/progress`
   const page = `${opts.baseUrl}/progress`
   return {
@@ -292,13 +298,14 @@ function about(unit: string, opts: ReportOptions) {
       'Dates are the local calendar date of the workout. Weeks start on Monday, and the latest week is still in progress.',
       'The "data as of" / lastSyncedAt time is when the phone last uploaded. Workouts logged after that are not included yet.',
       'A change of n/a (null in JSON) means there was nothing in the earlier period to compare against.',
+      'This log is live and changes as the owner trains. The t= value in a link only defeats caches: to re-check for new workouts, fetch the link again with any new t= value instead of reusing an earlier copy.',
     ],
     endpoints: {
-      page: `${page} — this report as a readable web page`,
-      text: `${page}.txt — the same report as plain text (Markdown)`,
-      report: `${api} — the same report as JSON`,
-      moreHistory: `${page}?sessions=50&weeks=52 (also works on ${page}.txt and ${api}) — sessions: how many recent workouts to list in full (default ${DEFAULT_SESSIONS}, max ${MAX_SESSIONS}); weeks: weekly buckets (default ${DEFAULT_WEEKS}, max ${MAX_WEEKS})`,
-      rawExport: `${api}?view=export — the complete raw backup file, identical to the app's JSON export (every workout ever logged, raw IDs, no summaries)`,
+      page: `${page}?t=${t} — this report as a readable web page`,
+      text: `${page}.txt?t=${t} — the same report as plain text (Markdown)`,
+      report: `${api}?t=${t} — the same report as JSON`,
+      moreHistory: `${page}?sessions=50&weeks=52&t=${t} (also works on ${page}.txt and ${api}) — sessions: how many recent workouts to list in full (default ${DEFAULT_SESSIONS}, max ${MAX_SESSIONS}); weeks: weekly buckets (default ${DEFAULT_WEEKS}, max ${MAX_WEEKS})`,
+      rawExport: `${api}?view=export&t=${t} — the complete raw backup file, identical to the app's JSON export (every workout ever logged, raw IDs, no summaries)`,
     },
   }
 }

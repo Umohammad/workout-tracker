@@ -31,7 +31,12 @@ const MIN_KEY_LENGTH = 16
 
 const HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
-  'Cache-Control': 'no-store',
+  // Live data: nothing between the phone's last sync and the reader may keep a copy.
+  'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+  'CDN-Cache-Control': 'no-store',
+  'Vercel-CDN-Cache-Control': 'no-store',
+  Pragma: 'no-cache',
+  Expires: '0',
   'Access-Control-Allow-Origin': '*',
   // The link is meant to be handed to assistants, not found by search engines.
   'X-Robots-Tag': 'noindex, nofollow',
