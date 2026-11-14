@@ -3,6 +3,10 @@
 // GET  /progress, /progress.txt — the same report as a web page / plain text
 //      (rewritten here by vercel.json). Chat assistants read those far more
 //      readily than a JSON endpoint.
+// GET  /live/<stamp>[/progress.txt|/progress.json|/export.json] — the links the
+//      app hands out. <stamp> is ignored; it sits in the PATH so every copied
+//      link is a URL no AI fetch cache or search index has seen before (they
+//      often drop query strings, so ?t= alone was not enough).
 // PUT  /api/progress  — the app uploads its data here with
 //      `Authorization: Bearer <sync key>`. The first key to sync claims the
 //      link (only its hash is kept); after that only that key can overwrite it.
@@ -51,6 +55,8 @@ type Format = 'json' | 'md' | 'html'
 function formatOf(url: URL): Format {
   const f = url.searchParams.get('format')
   if (f === 'md' || f === 'html' || f === 'json') return f
+  const live = /^\/live\/[^/]+(\/.*)?$/.exec(url.pathname)
+  if (live) return live[1]?.endsWith('.txt') ? 'md' : live[1]?.endsWith('.json') ? 'json' : 'html'
   if (url.pathname.endsWith('/progress.txt')) return 'md'
   if (url.pathname.endsWith('/progress')) return url.pathname.startsWith('/api/') ? 'json' : 'html'
   return 'json'
@@ -87,6 +93,9 @@ async function readStored(): Promise<Stored | null> {
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url)
   const format = formatOf(url)
+  // One line per read, so a "my AI got old data" report can be checked against
+  // what actually reached the server (and which fetcher it was).
+  console.log(`read ${url.pathname}${url.search} ua=${request.headers.get('user-agent') ?? '-'}`)
   let stored: Stored | null
   try {
     stored = await readStored()
@@ -101,7 +110,7 @@ export async function GET(request: Request): Promise<Response> {
     return send(format, `# Workout progress report\n\n${error} ${fix}\n`, { error, fix }, 404)
   }
 
-  if (url.searchParams.get('view') === 'export') return json(stored.data)
+  if (url.searchParams.get('view') === 'export' || url.pathname.endsWith('/export.json')) return json(stored.data)
 
   const report = buildReport(stored.data, {
     now: new Date(),

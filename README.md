@@ -110,10 +110,14 @@ There are two ways to hand your log to an assistant, both in **Settings → AI a
 - **A link**: turn on sync, and the app uploads its data (the same JSON as **Export backup**) whenever it opens and after each burst of logging. **🔗 Copy link prompt for your AI** then gives you a message pointing at:
 
 ```
-https://<your-deployment>/progress?t=<stamp>
+https://<your-deployment>/live/<stamp>
 ```
 
-The `?t=` value changes every time you copy the link and the server ignores it. It is there because AI fetch tools keep their own cache keyed on the exact URL, so handing an agent the same link twice could get it an old copy. The server itself never caches: every response sends `Cache-Control: no-store` (plus `CDN-Cache-Control` / `Vercel-CDN-Cache-Control: no-store`) and reads the blob uncached. Links inside the report carry a fresh `t=` too, and the report tells agents to re-fetch with a new one to check for new workouts.
+`<stamp>` is new every time you copy the link, and the server ignores it. It is in the **path** because AI assistants don't always fetch live. ChatGPT, for one, can answer from its own stored copy of a URL, and those caches often ignore query strings, so `?t=` was not enough. A path nobody has fetched before has no stored copy. The server itself never caches: every response sends `Cache-Control: no-store` (plus `CDN-Cache-Control` / `Vercel-CDN-Cache-Control: no-store`, `Pragma`, `Expires`) and reads the blob uncached.
+
+Each report shows **Data as of** (the phone's last sync) and **Served at** (when the server built that copy). If "Served at" is well before now, the assistant is reading a cached copy. Copy a fresh link and try again. Every read is logged with its user agent in the Vercel function logs, so you can check whether an assistant's request reached the server at all.
+
+`/progress`, `/progress.txt` and `/api/progress` still work. `/live/<stamp>/progress.txt`, `/live/<stamp>/progress.json` and `/live/<stamp>/export.json` serve the text, JSON and raw-backup versions.
 
 Assistants that browse (ChatGPT, Claude) can open that link themselves. Some won't (the Gemini app declined to open the JSON link). For those, use **Copy report for AI**.
 

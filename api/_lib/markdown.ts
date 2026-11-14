@@ -50,6 +50,12 @@ export function renderMarkdown(r: Report): string {
       ? `Data as of **${r.lastSyncedAt.slice(0, 16).replace('T', ' ')} UTC** (last sync from the owner's phone). Weights in **${u}**.`
       : `Data as of **${r.generatedAt.slice(0, 16).replace('T', ' ')} UTC** (copied straight from the app). Weights in **${u}**.`
   )
+  if (r.lastSyncedAt) {
+    out.push(
+      `Served at **${r.generatedAt.slice(0, 16).replace('T', ' ')} UTC** — the live server built this copy at that moment. ` +
+        `If that is well before now, this is a cached copy: re-fetch ${r.about.endpoints.page.split(' ')[0].replace(/\/live\/[^/]+/, '/live/<new-stamp>')} with any new stamp.`
+    )
+  }
 
   out.push('## What this is and how to read it')
   out.push(r.about.what)

@@ -112,7 +112,7 @@ describe('GET /api/progress', () => {
     expect(res.headers.get('access-control-allow-origin')).toBe('*')
     expect(res.headers.get('x-robots-tag')).toMatch(/noindex/)
     const r = await res.json()
-    expect(r.about.endpoints.report).toMatch(/^https:\/\/workouts\.test\/api\/progress/)
+    expect(r.about.endpoints.report).toMatch(/^https:\/\/workouts\.test\/live\/[0-9a-z]+\/progress\.json/)
     expect(r.lastSyncedAt).toMatch(/^\d{4}-/)
     expect(r.weekly).toHaveLength(12)
     expect(r.recentSessions).toHaveLength(10)
@@ -162,6 +162,22 @@ describe('GET as a page or text', () => {
     expect(md.split('## Recent workouts')[1].match(/^### /gm)).toHaveLength(2)
     expect((await at('/api/progress?format=html')).headers.get('content-type')).toContain('text/html')
     expect((await at('/api/progress')).headers.get('content-type')).toContain('application/json')
+  })
+
+  it('serves the stamped /live/ links the app hands out, ignoring the stamp', async () => {
+    await put(demoData(), KEY)
+    const page = await at('/live/abc123')
+    expect(page.headers.get('content-type')).toBe('text/html; charset=utf-8')
+    const html = await page.text()
+    expect(html).toContain('Served at')
+    expect(html).toMatch(/https:\/\/workouts\.test\/live\/[0-9a-z]+\/progress\.txt/)
+    const txt = await at('/live/zz9/progress.txt?sessions=2')
+    expect(txt.headers.get('content-type')).toBe('text/plain; charset=utf-8')
+    expect((await txt.text()).split('## Recent workouts')[1].match(/^### /gm)).toHaveLength(2)
+    expect((await (await at('/live/q/progress.json')).json()).overview).toBeTruthy()
+    const exp = await (await at('/live/q/export.json')).json()
+    expect(Array.isArray(exp.sessions)).toBe(true)
+    expect(exp.about).toBeUndefined()
   })
 
   it('answers HEAD like GET, without a body', async () => {

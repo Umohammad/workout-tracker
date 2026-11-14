@@ -12,7 +12,7 @@ export default defineConfig({
       includeAssets: ['icon-192.png', 'icon-512.png'],
       // /api/progress and /progress are served by a Vercel function; opening them in a browser
       // that has the app installed must not get the SPA shell instead.
-      workbox: { navigateFallbackDenylist: [/^\/api\//, /^\/progress/] },
+      workbox: { navigateFallbackDenylist: [/^\/api\//, /^\/progress/, /^\/live\//] },
       manifest: {
         name: 'Workout Tracker',
         short_name: 'Workout',

@@ -62,10 +62,10 @@ export function progressUrl(): string {
   return location.origin + '/progress'
 }
 
-// The link to hand an agent: unique per copy (?t=, ignored by the server) so an
-// AI fetch tool's own URL cache can't serve it an old copy of the log.
+// The link to hand an agent: a new path on every copy (/live/<stamp>, the stamp
+// is ignored by the server) so no AI fetch cache or search index has a copy of it.
 export function freshProgressUrl(now = new Date()): string {
-  return `${progressUrl()}?t=${freshStamp(now)}`
+  return `${location.origin}/live/${freshStamp(now)}${Math.random().toString(36).slice(2, 6)}`
 }
 
 // 128 random bits. The server remembers the first key that syncs to it.

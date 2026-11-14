@@ -1,6 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
+    { "source": "/live/:stamp/progress.txt", "destination": "/api/progress?format=md" },
+    { "source": "/live/:stamp/progress.json", "destination": "/api/progress?format=json" },
+    { "source": "/live/:stamp/export.json", "destination": "/api/progress?format=json&view=export" },
+    { "source": "/live/:stamp", "destination": "/api/progress?format=html" },
     { "source": "/progress", "destination": "/api/progress?format=html" },
     { "source": "/progress.txt", "destination": "/api/progress?format=md" }
   ]
