@@ -258,6 +258,23 @@ function AiAccess({ data }: { data: AppData }) {
                     ? `✓ Synced ${ago(sync.lastSyncedAt)} — updates automatically as you log.`
                     : 'Not synced yet.'}
             </p>
+            <label className="fieldlabel">Live connection (recommended)</label>
+            <p className="sub">
+              A link relies on the AI's web browsing, which can answer from an old stored copy. A connector is a tool the AI
+              calls directly, so it reads your live log on every question.
+            </p>
+            <p className="sub">
+              <strong>Claude or ChatGPT connector</strong> (MCP, no authentication): <code>{location.origin}/api/mcp</code>
+            </p>
+            <button className="bigbtn" onClick={() => void copy(location.origin + '/api/mcp', 'Connector URL')}>
+              🔌 Copy connector URL
+            </button>
+            <p className="sub">
+              <strong>ChatGPT Custom GPT</strong> → Configure → Actions → Import from URL: <code>{location.origin}/openapi.json</code>
+            </p>
+            <button className="linkbtn" onClick={() => void copy(location.origin + '/openapi.json', 'Actions schema URL')}>
+              Copy Custom GPT schema URL
+            </button>
             <label className="fieldlabel">Link for your AI</label>
             <p className="sub"><code>{url}</code></p>
             <button className="bigbtn" onClick={() => void copy(prompt(), 'AI prompt')}>

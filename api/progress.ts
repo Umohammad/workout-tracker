@@ -26,19 +26,13 @@
 // Storage is a single private Vercel Blob; connecting a Blob store to the
 // project is the only setup.
 import { createHash, timingSafeEqual } from 'node:crypto'
-import { get, put } from '@vercel/blob'
+import { put } from '@vercel/blob'
 import { isAppData } from './_lib/validate.js'
 import { renderMarkdown, markdownToHtml } from './_lib/markdown.js'
 import { buildReport, freshStamp, DEFAULT_SESSIONS, DEFAULT_WEEKS, MAX_SESSIONS, MAX_WEEKS } from './_lib/report.js'
 import type { AppData } from '../src/types.js'
+import { PATHNAME, readStored, type Stored } from './_lib/store.js'
 
-const PATHNAME = 'progress/latest.json'
-
-interface Stored {
-  syncedAt: string
-  keyHash?: string
-  data: AppData
-}
 
 // Phone-generated keys are 32 hex chars; refuse anything guessable.
 const MIN_KEY_LENGTH = 16
@@ -121,11 +115,6 @@ const sha256 = (s: string) => createHash('sha256').update(s).digest('hex')
 // Comparing digests keeps this constant-time regardless of input length.
 const sameHash = (a: string, b: string) => timingSafeEqual(Buffer.from(a, 'hex'), Buffer.from(b, 'hex'))
 
-async function readStored(): Promise<Stored | null> {
-  const res = await get(PATHNAME, { access: 'private', useCache: false })
-  if (!res || res.statusCode !== 200) return null
-  return (await new Response(res.stream).json()) as Stored
-}
 
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url)

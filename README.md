@@ -104,7 +104,30 @@ Sanity-check a generated file by importing it and looking at the Progress and Hi
 
 ## AI access: let ChatGPT, Gemini or Claude read your progress
 
-There are two ways to hand your log to an assistant, both in **Settings → AI access**:
+There are three ways to give your log to an assistant, all in **Settings → AI access**. Use the first one if your assistant supports it: it is the only one that is live on every question.
+
+### 1. Live connection (recommended): a connector the AI calls as a tool
+
+A link depends on the assistant's web browsing, and that is a crawler/cache pipeline you don't control. ChatGPT was seen in this app's logs fetching the live page and still answering "cache miss" from an October copy. A **tool call** has no browser in between. The assistant's backend calls this server directly, and every call reads the synced data afresh.
+
+**MCP connector**: `https://<your-deployment>/api/mcp` (Streamable HTTP, stateless, **no authentication**, read-only)
+
+- **Claude** (claude.ai, desktop, mobile): Settings → Connectors → **Add custom connector** → paste the URL. Then ask "how's my training going?". Claude calls the tool.
+- **ChatGPT**: Settings → Apps & Connectors → Advanced → turn on **Developer mode**, then **Create** a connector with the URL and "No authentication". Availability depends on your plan; check OpenAI's current docs if the option is missing.
+- Anything else that speaks MCP over HTTP (Claude Code: `claude mcp add --transport http workout https://<your-deployment>/api/mcp`; Gemini CLI; Cursor).
+
+| Tool | Returns |
+|---|---|
+| `get_progress_report` | The full report as text (`weeks`, `sessions` optional) |
+| `get_exercise_history` | Every logged set of the exercises matching `exercise`, oldest first |
+| `get_raw_export` | The raw backup as JSON |
+| `search` / `fetch` | The pair ChatGPT connectors and deep research look for. `search` returns the report plus matching exercises; `fetch` returns one in full |
+
+**ChatGPT Custom GPT Action**: create a GPT → Configure → **Actions** → **Import from URL** → `https://<your-deployment>/openapi.json`, with authentication **None**. The Action calls `/api/report`, `/api/report/exercise?name=` and `/api/report/export`. These return plain JSON, `no-store`, never redirected, read fresh on every call.
+
+Every answer says **Last phone sync** (when the phone uploaded) and **Served** (now). "Live" means live as of the phone's last upload. The app uploads on launch, about 15 seconds after you stop tapping, and when you leave the app.
+
+### 2. Copy and paste, and 3. a link
 
 - **📋 Copy report for AI**: copies the whole progress report as text. Paste it into any chat. It works with every assistant and needs no sync or setup.
 - **A link**: turn on sync, and the app uploads its data (the same JSON as **Export backup**) whenever it opens and after each burst of logging. **🔗 Copy link prompt for your AI** then gives you a message pointing at:
