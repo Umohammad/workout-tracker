@@ -113,11 +113,15 @@ There are two ways to hand your log to an assistant, both in **Settings → AI a
 https://<your-deployment>/live/<stamp>
 ```
 
-`<stamp>` is new every time you copy the link, and the server ignores it. It is in the **path** because AI assistants don't always fetch live. ChatGPT, for one, can answer from its own stored copy of a URL, and those caches often ignore query strings, so `?t=` was not enough. A path nobody has fetched before has no stored copy. The server itself never caches: every response sends `Cache-Control: no-store` (plus `CDN-Cache-Control` / `Vercel-CDN-Cache-Control: no-store`, `Pragma`, `Expires`) and reads the blob uncached.
+`<stamp>` is new every time you copy the link, and the server ignores it. It is in the **path** because AI assistants don't always fetch live. ChatGPT, for one, can answer from its own stored copy of a URL, and those caches often ignore query strings.
+
+**Bare links redirect.** `/progress`, `/progress.txt`, `/api/progress` and `?view=export` (and old `?t=` links) answer with a `302` to a brand-new `/live/<stamp>` URL. `?sessions=` and `?weeks=` are kept. The redirect itself is `no-store`, so following any link always lands on live data.
+
+**A `/live/<stamp>` page may be stored by the reader** (`Cache-Control: public, max-age=300`, no robots directives). Vercel's own edge still never caches it (`Vercel-CDN-Cache-Control: no-store`). This is deliberate. ChatGPT's fetcher was seen in the logs receiving the live page and then still reporting "cache miss": its fetch layer only passes on pages it is allowed to keep, and `no-store` / `noindex` told it not to. A stored copy of a `/live` URL can't go stale in a way that matters, because the next copied link is a new URL.
 
 Each report shows **Data as of** (the phone's last sync) and **Served at** (when the server built that copy). If "Served at" is well before now, the assistant is reading a cached copy. Copy a fresh link and try again. Every read is logged with its user agent in the Vercel function logs, so you can check whether an assistant's request reached the server at all.
 
-`/progress`, `/progress.txt` and `/api/progress` still work. `/live/<stamp>/progress.txt`, `/live/<stamp>/progress.json` and `/live/<stamp>/export.json` serve the text, JSON and raw-backup versions.
+`/live/<stamp>/progress.txt`, `/live/<stamp>/progress.json` and `/live/<stamp>/export.json` serve the text, JSON and raw-backup versions.
 
 Assistants that browse (ChatGPT, Claude) can open that link themselves. Some won't (the Gemini app declined to open the JSON link). For those, use **Copy report for AI**.
 

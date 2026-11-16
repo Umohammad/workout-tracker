@@ -31,7 +31,8 @@ const put = (body: unknown, auth?: string) =>
       body: typeof body === 'string' ? body : JSON.stringify(body),
     })
   )
-const get = (qs = '') => GET(new Request(URL_ + qs))
+const LIVE = 'https://workouts.test/live/test1/progress.json'
+const get = (qs = '') => GET(new Request(LIVE + qs))
 
 const KEY = 'Bearer 0123456789abcdef0123456789abcdef'
 const OTHER = 'Bearer ffffffffffffffffffffffffffffffff'
@@ -102,15 +103,14 @@ describe('GET /api/progress', () => {
     expect((await res.json()).fix).toMatch(/Settings/)
   })
 
-  it('serves the report publicly, uncached and unindexed', async () => {
+  it('serves the report publicly; readers may keep a /live copy, Vercel may not', async () => {
     await put(demoData(), KEY)
     const res = await get()
     expect(res.status).toBe(200)
-    expect(res.headers.get('cache-control')).toMatch(/no-store/)
-    expect(res.headers.get('cdn-cache-control')).toBe('no-store')
+    expect(res.headers.get('cache-control')).toBe('public, max-age=300')
     expect(res.headers.get('vercel-cdn-cache-control')).toBe('no-store')
     expect(res.headers.get('access-control-allow-origin')).toBe('*')
-    expect(res.headers.get('x-robots-tag')).toMatch(/noindex/)
+    expect(res.headers.get('x-robots-tag')).toBeNull()
     const r = await res.json()
     expect(r.about.endpoints.report).toMatch(/^https:\/\/workouts\.test\/live\/[0-9a-z]+\/progress\.json/)
     expect(r.lastSyncedAt).toMatch(/^\d{4}-/)
@@ -145,23 +145,44 @@ describe('GET /api/progress', () => {
 describe('GET as a page or text', () => {
   const at = (path: string) => GET(new Request('https://workouts.test' + path))
 
-  it('serves HTML at /progress and Markdown text at /progress.txt', async () => {
+  it('serves HTML at /live/<stamp> and Markdown text at /live/<stamp>/progress.txt', async () => {
     await put(demoData(), KEY)
-    const page = await at('/progress')
+    const page = await at('/live/p')
     expect(page.status).toBe(200)
     expect(page.headers.get('content-type')).toBe('text/html; charset=utf-8')
     expect(await page.text()).toContain('<h2>Weekly totals</h2>')
-    const txt = await at('/progress.txt')
+    const txt = await at('/live/p/progress.txt')
     expect(txt.headers.get('content-type')).toBe('text/plain; charset=utf-8')
     expect(await txt.text()).toMatch(/^# Workout progress report/)
   })
 
   it('honours the rewrite\'s ?format= and the usual limits', async () => {
     await put(demoData(), KEY)
-    const md = await (await at('/api/progress?format=md&sessions=2')).text()
+    const md = await (await at('/live/s/progress.txt?format=md&sessions=2')).text()
     expect(md.split('## Recent workouts')[1].match(/^### /gm)).toHaveLength(2)
-    expect((await at('/api/progress?format=html')).headers.get('content-type')).toContain('text/html')
-    expect((await at('/api/progress')).headers.get('content-type')).toContain('application/json')
+    expect((await at('/live/s?format=html')).headers.get('content-type')).toContain('text/html')
+    expect((await at('/live/s/progress.json?format=json')).headers.get('content-type')).toContain('application/json')
+  })
+
+  it('redirects every bare link to a new, uncached /live/<stamp> URL', async () => {
+    await put(demoData(), KEY)
+    const cases: [string, RegExp][] = [
+      ['/progress', /^https:\/\/workouts\.test\/live\/[0-9a-z]+$/],
+      ['/progress?t=mwjtcim2&format=html', /^https:\/\/workouts\.test\/live\/[0-9a-z]+$/],
+      ['/progress.txt?sessions=2&format=md', /^https:\/\/workouts\.test\/live\/[0-9a-z]+\/progress\.txt\?sessions=2$/],
+      ['/api/progress?weeks=3', /^https:\/\/workouts\.test\/live\/[0-9a-z]+\/progress\.json\?weeks=3$/],
+      ['/api/progress?view=export', /^https:\/\/workouts\.test\/live\/[0-9a-z]+\/export\.json$/],
+    ]
+    const seen = new Set<string>()
+    for (const [path, want] of cases) {
+      const res = await at(path)
+      expect(res.status).toBe(302)
+      expect(res.headers.get('cache-control')).toMatch(/no-store/)
+      const loc = res.headers.get('location')!
+      expect(loc).toMatch(want)
+      seen.add(loc.split('/')[4])
+    }
+    expect(seen.size).toBe(cases.length)
   })
 
   it('serves the stamped /live/ links the app hands out, ignoring the stamp', async () => {
@@ -182,14 +203,15 @@ describe('GET as a page or text', () => {
 
   it('answers HEAD like GET, without a body', async () => {
     await put(demoData(), KEY)
-    const res = await HEAD(new Request('https://workouts.test/progress', { method: 'HEAD' }))
+    const res = await HEAD(new Request('https://workouts.test/live/h', { method: 'HEAD' }))
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8')
     expect(await res.text()).toBe('')
   })
 
-  it('explains an empty log in the same format', async () => {
-    const res = await at('/progress')
+  it('explains an empty log in the same format, uncached', async () => {
+    const res = await at('/live/e')
+    expect(res.headers.get('cache-control')).toMatch(/no-store/)
     expect(res.status).toBe(404)
     expect(await res.text()).toContain('No workout data has been synced yet')
   })

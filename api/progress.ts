@@ -7,6 +7,16 @@
 //      app hands out. <stamp> is ignored; it sits in the PATH so every copied
 //      link is a URL no AI fetch cache or search index has seen before (they
 //      often drop query strings, so ?t= alone was not enough).
+//      Every other GET (/progress, /progress.txt, /api/progress, ?view=export)
+//      answers with a 302 to a brand-new /live/<stamp> URL, so old and bare
+//      links still reach live data.
+//
+// Caching: a /live/<stamp> response MAY be stored by the reader. That is
+// deliberate. ChatGPT's fetcher was seen receiving the live page (200, logged
+// here) and still reporting "cache miss": its fetch layer only hands the model
+// pages it was allowed to keep, and no-store / noindex told it not to. A stored
+// copy of a /live URL is harmless, because the next copied link is a new URL.
+// Vercel's own edge is still told not to cache (Vercel-CDN-Cache-Control).
 // PUT  /api/progress  — the app uploads its data here with
 //      `Authorization: Bearer <sync key>`. The first key to sync claims the
 //      link (only its hash is kept); after that only that key can overwrite it.
@@ -19,7 +29,7 @@ import { createHash, timingSafeEqual } from 'node:crypto'
 import { get, put } from '@vercel/blob'
 import { isAppData } from './_lib/validate.js'
 import { renderMarkdown, markdownToHtml } from './_lib/markdown.js'
-import { buildReport, DEFAULT_SESSIONS, DEFAULT_WEEKS, MAX_SESSIONS, MAX_WEEKS } from './_lib/report.js'
+import { buildReport, freshStamp, DEFAULT_SESSIONS, DEFAULT_WEEKS, MAX_SESSIONS, MAX_WEEKS } from './_lib/report.js'
 import type { AppData } from '../src/types.js'
 
 const PATHNAME = 'progress/latest.json'
@@ -33,20 +43,47 @@ interface Stored {
 // Phone-generated keys are 32 hex chars; refuse anything guessable.
 const MIN_KEY_LENGTH = 16
 
-const HEADERS = {
+// Redirects, errors, PUT replies: nobody may keep a copy.
+const HEADERS: Record<string, string> = {
   'Content-Type': 'application/json; charset=utf-8',
-  // Live data: nothing between the phone's last sync and the reader may keep a copy.
   'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
   'CDN-Cache-Control': 'no-store',
   'Vercel-CDN-Cache-Control': 'no-store',
   Pragma: 'no-cache',
   Expires: '0',
   'Access-Control-Allow-Origin': '*',
-  // The link is meant to be handed to assistants, not found by search engines.
+  // Bare links are not for search engines.
   'X-Robots-Tag': 'noindex, nofollow',
 }
 
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body, null, 2), { status, headers: HEADERS })
+// A successful /live/<stamp> read: storable by the reader's fetch layer (see
+// the header comment), never by Vercel's edge. No robots directives, which AI
+// fetch layers can also treat as "do not keep".
+const LIVE_HEADERS: Record<string, string> = {
+  'Content-Type': 'application/json; charset=utf-8',
+  'Cache-Control': 'public, max-age=300',
+  'Vercel-CDN-Cache-Control': 'no-store',
+  'Access-Control-Allow-Origin': '*',
+}
+
+const json = (body: unknown, status = 200, headers = HEADERS) =>
+  new Response(JSON.stringify(body, null, 2), { status, headers })
+
+const isLive = (url: URL) => /^\/live\/[^/]+(\/|$)/.test(url.pathname)
+
+// Where a bare link should go: the same view under a never-seen /live/<stamp>.
+function liveLocation(url: URL, format: Format): string {
+  const stamp = freshStamp(new Date()) + Math.random().toString(36).slice(2, 6)
+  const suffix =
+    format === 'html' ? '' : format === 'md' ? '/progress.txt' : url.searchParams.get('view') === 'export' ? '/export.json' : '/progress.json'
+  const keep = new URLSearchParams()
+  for (const k of ['sessions', 'weeks']) {
+    const v = url.searchParams.get(k)
+    if (v !== null) keep.set(k, v)
+  }
+  const qs = keep.toString()
+  return `${url.origin}/live/${stamp}${suffix}${qs ? '?' + qs : ''}`
+}
 
 type Format = 'json' | 'md' | 'html'
 
@@ -62,14 +99,14 @@ function formatOf(url: URL): Format {
   return 'json'
 }
 
-function send(format: Format, markdown: string, jsonBody: unknown, status = 200): Response {
-  if (format === 'json') return json(jsonBody, status)
+function send(format: Format, markdown: string, jsonBody: unknown, status = 200, base = HEADERS): Response {
+  if (format === 'json') return json(jsonBody, status, base)
   if (format === 'md') {
-    return new Response(markdown, { status, headers: { ...HEADERS, 'Content-Type': 'text/plain; charset=utf-8' } })
+    return new Response(markdown, { status, headers: { ...base, 'Content-Type': 'text/plain; charset=utf-8' } })
   }
   return new Response(markdownToHtml(markdown), {
     status,
-    headers: { ...HEADERS, 'Content-Type': 'text/html; charset=utf-8' },
+    headers: { ...base, 'Content-Type': 'text/html; charset=utf-8' },
   })
 }
 
@@ -96,6 +133,9 @@ export async function GET(request: Request): Promise<Response> {
   // One line per read, so a "my AI got old data" report can be checked against
   // what actually reached the server (and which fetcher it was).
   console.log(`read ${url.pathname}${url.search} ua=${request.headers.get('user-agent') ?? '-'}`)
+  if (!isLive(url)) {
+    return new Response(null, { status: 302, headers: { ...HEADERS, Location: liveLocation(url, format) } })
+  }
   let stored: Stored | null
   try {
     stored = await readStored()
@@ -110,7 +150,9 @@ export async function GET(request: Request): Promise<Response> {
     return send(format, `# Workout progress report\n\n${error} ${fix}\n`, { error, fix }, 404)
   }
 
-  if (url.searchParams.get('view') === 'export' || url.pathname.endsWith('/export.json')) return json(stored.data)
+  if (url.searchParams.get('view') === 'export' || url.pathname.endsWith('/export.json')) {
+    return json(stored.data, 200, LIVE_HEADERS)
+  }
 
   const report = buildReport(stored.data, {
     now: new Date(),
@@ -119,7 +161,7 @@ export async function GET(request: Request): Promise<Response> {
     weeks: clampInt(url.searchParams.get('weeks'), DEFAULT_WEEKS, MAX_WEEKS),
     sessions: clampInt(url.searchParams.get('sessions'), DEFAULT_SESSIONS, MAX_SESSIONS),
   })
-  return send(format, format === 'json' ? '' : renderMarkdown(report), report)
+  return send(format, format === 'json' ? '' : renderMarkdown(report), report, 200, LIVE_HEADERS)
 }
 
 // Some link fetchers probe with HEAD before downloading; answer as GET would.
