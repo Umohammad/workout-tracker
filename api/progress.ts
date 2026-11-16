@@ -170,18 +170,32 @@ export async function HEAD(request: Request): Promise<Response> {
   return new Response(null, { status: res.status, headers: res.headers })
 }
 
+// One line per upload attempt, so "the link has old data" can be traced to a
+// phone that never uploaded, or one whose uploads are refused. Never logs the key.
+function logPut(outcome: string, body?: AppData) {
+  const last = body?.sessions.reduce((m, s) => (s.date > m ? s.date : m), '') || '-'
+  console.log(`sync ${outcome}${body ? ` sessions=${body.sessions.length} latest=${last}` : ''}`)
+}
+
 export async function PUT(request: Request): Promise<Response> {
   const auth = request.headers.get('authorization')
   const key = auth?.startsWith('Bearer ') ? auth.slice(7) : ''
-  if (key.length < MIN_KEY_LENGTH) return json({ error: 'Missing or too-short sync key.' }, 401)
+  if (key.length < MIN_KEY_LENGTH) {
+    logPut('refused: no key')
+    return json({ error: 'Missing or too-short sync key.' }, 401)
+  }
 
   let body: unknown
   try {
     body = await request.json()
   } catch {
+    logPut('refused: body not JSON')
     return json({ error: 'Body must be JSON.' }, 400)
   }
-  if (!isAppData(body)) return json({ error: "That doesn't look like the app's backup format." }, 400)
+  if (!isAppData(body)) {
+    logPut('refused: not the backup format')
+    return json({ error: "That doesn't look like the app's backup format." }, 400)
+  }
 
   const keyHash = sha256(key)
   const stored: Stored = { syncedAt: new Date().toISOString(), keyHash, data: body }
@@ -193,6 +207,7 @@ export async function PUT(request: Request): Promise<Response> {
       sameHash(keyHash, current.keyHash) ||
       (!!recovery && sameHash(keyHash, sha256(recovery)))
     if (!allowed) {
+      logPut('refused: different sync key', body)
       return json({ error: 'This link is already synced from a different key. Use the original key.' }, 401)
     }
     await put(PATHNAME, JSON.stringify(stored), {
@@ -205,6 +220,7 @@ export async function PUT(request: Request): Promise<Response> {
     console.error('blob access failed', err)
     return json({ error: 'Storage is not reachable. Connect a Vercel Blob store to this project.' }, 503)
   }
+  logPut('ok', body)
   return json({ ok: true, syncedAt: stored.syncedAt, sessions: body.sessions.length })
 }
 
